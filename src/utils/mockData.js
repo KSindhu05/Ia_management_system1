@@ -47,6 +47,54 @@ const lastNames = [
 
 const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
+export const englishMarks = [
+    15, 2, 10, 33, 40, 32, 48, 21, 36, 42,
+    24, 21, 35, 20, 47, 45, 26, 41, 45, 39,
+    38, 35, 28, 15, 36, 48, 48, 35, 48, 28,
+    35, 35, 'Ab', 36, 9, 29, 26, 28, 18, 46,
+    29, 20, 20, 41, 29, 40, 'Ab', 9, 23, 15,
+    9, 23, 35, 33, 49, 35, 30, 'Ab', 'Ab', 23,
+    42, 'Ab', 21
+];
+
+export const mathsMarks = [
+    { cie1: 19, cie2: 1 }, { cie1: 8, cie2: 0 }, { cie1: 8, cie2: 0 }, { cie1: 34, cie2: 3 },
+    { cie1: 35, cie2: 14 }, { cie1: 35, cie2: 15 }, { cie1: 35, cie2: 11 }, { cie1: 10, cie2: 0 },
+    { cie1: 32, cie2: 15 }, { cie1: 35, cie2: 15 }, { cie1: 16, cie2: 0 }, { cie1: 34, cie2: 6 },
+    { cie1: 35, cie2: 4 }, { cie1: 7, cie2: 0 }, { cie1: 28, cie2: 11 }, { cie1: 32, cie2: 11 },
+    { cie1: 16, cie2: 4 }, { cie1: 29, cie2: 0 }, { cie1: 35, cie2: 15 }, { cie1: 21, cie2: 0 },
+    { cie1: 28, cie2: 10 }, { cie1: 34, cie2: 15 }, { cie1: 34, cie2: 15 }, { cie1: 15, cie2: 0 },
+    { cie1: 27, cie2: 4 }, { cie1: 35, cie2: 11 }, { cie1: 35, cie2: 15 }, { cie1: 13, cie2: 0 },
+    { cie1: 32, cie2: 15 }, { cie1: 5, cie2: 0 }, { cie1: 20, cie2: 0 }, { cie1: 33, cie2: 15 },
+    { cie1: 'Ab', cie2: 'Ab' }, { cie1: 35, cie2: 14 }, { cie1: 1, cie2: 0 }, { cie1: 34, cie2: 14 },
+    { cie1: 26, cie2: 4 }, { cie1: 10, cie2: 0 }, { cie1: 2, cie2: 0 }, { cie1: 35, cie2: 14 },
+    { cie1: 30, cie2: 15 }, { cie1: 5, cie2: 0 }, { cie1: 13, cie2: 0 }, { cie1: 35, cie2: 14 },
+    { cie1: 25, cie2: 6 }, { cie1: 35, cie2: 14 }, { cie1: 'Ab', cie2: 'Ab' }, { cie1: 15, cie2: 0 },
+    { cie1: 7, cie2: 0 }, { cie1: 6, cie2: 0 }, { cie1: 6, cie2: 0 }, { cie1: 33, cie2: 4 },
+    { cie1: 34, cie2: 14 }, { cie1: 20, cie2: 0 }, { cie1: 30, cie2: 0 }, { cie1: 35, cie2: 15 },
+    { cie1: 35, cie2: 13 }, { cie1: 'Ab', cie2: 'Ab' }, { cie1: 'Ab', cie2: 'Ab' }, { cie1: 31, cie2: 14 },
+    { cie1: 33, cie2: 12 }, { cie1: 'Ab', cie2: 'Ab' }, { cie1: 10, cie2: 0 }
+];
+
+export const caegMarks = [
+    { cie1: 8, cie2: 22 }, { cie1: 5, cie2: 6 }, { cie1: 4, cie2: 6 }, { cie1: 10, cie2: 38 },
+    { cie1: 8, cie2: 36 }, { cie1: 8, cie2: 37 }, { cie1: 9, cie2: 30 }, { cie1: 4, cie2: 8 },
+    { cie1: 6, cie2: 35 }, { cie1: 5, cie2: 34 }, { cie1: 6, cie2: 2 }, { cie1: 10, cie2: 12 },
+    { cie1: 9, cie2: 35 }, { cie1: 5, cie2: 18 }, { cie1: 8, cie2: 29 }, { cie1: 5, cie2: 32 },
+    { cie1: 6, cie2: 36 }, { cie1: 10, cie2: 29 }, { cie1: 10, cie2: 39 }, { cie1: 8, cie2: 34 },
+    { cie1: 8, cie2: 23 }, { cie1: 8, cie2: 36 }, { cie1: 6, cie2: 35 }, { cie1: 6, cie2: 28 },
+    { cie1: 5, cie2: 17 }, { cie1: 6, cie2: 39 }, { cie1: 9, cie2: 38 }, { cie1: 5, cie2: 13 },
+    { cie1: 9, cie2: 39 }, { cie1: 5, cie2: 7 }, { cie1: 0, cie2: 18 }, { cie1: 9, cie2: 36 },
+    { cie1: 'Ab', cie2: 'Ab' }, { cie1: 8, cie2: 32 }, { cie1: 4, cie2: 0 }, { cie1: 6, cie2: 38 },
+    { cie1: 8, cie2: 24 }, { cie1: 6, cie2: 14 }, { cie1: 4, cie2: 0 }, { cie1: 6, cie2: 24 },
+    { cie1: 8, cie2: 37 }, { cie1: 6, cie2: 24 }, { cie1: 2, cie2: 8 }, { cie1: 8, cie2: 35 },
+    { cie1: 6, cie2: 30 }, { cie1: 8, cie2: 28 }, { cie1: 'Ab', cie2: 'Ab' }, { cie1: 6, cie2: 27 },
+    { cie1: 5, cie2: 16 }, { cie1: 5, cie2: 16 }, { cie1: 6, cie2: 24 }, { cie1: 8, cie2: 36 },
+    { cie1: 8, cie2: 33 }, { cie1: 6, cie2: 28 }, { cie1: 6, cie2: 30 }, { cie1: 7, cie2: 24 },
+    { cie1: 0, cie2: 18 }, { cie1: 'Ab', cie2: 'Ab' }, { cie1: 'Ab', cie2: 'Ab' }, { cie1: 8, cie2: 36 },
+    { cie1: 6, cie2: 32 }, { cie1: 'Ab', cie2: 'Ab' }, { cie1: 6, cie2: 18 }
+];
+
 const realCSStudents = [
     { regNo: '459CS25001', name: 'A KAVITHA' },
     { regNo: '459CS25002', name: 'ABHISHEKA' },
@@ -218,9 +266,10 @@ export const facultyData = {
 };
 
 export const facultySubjects = [
-    { id: 'SUB001', name: 'Engineering Maths-II', code: '20SC01T', type: 'Theory', semester: '2nd', studentCount: 63, co1MaxMarks: 35, co2MaxMarks: 15, totalMaxMarks: 50 },
-    { id: 'SUB002', name: 'English Communication', code: '20EG01T', type: 'Theory', semester: '2nd', studentCount: 63, co1MaxMarks: 50, co2MaxMarks: 0, totalMaxMarks: 50 },
-    { id: 'SUB003', name: 'Python', code: '20CS21P', type: 'Lab', semester: '2nd', studentCount: 63, co1MaxMarks: 25, co2MaxMarks: 25, totalMaxMarks: 50 }
+    { id: 'SUB001', name: 'Engineering Maths-II', code: '20SC01T', type: 'Theory', semester: '2nd', studentCount: 63, cie1MaxMarks: 35, cie2MaxMarks: 15, totalMaxMarks: 50 },
+    { id: 'SUB002', name: 'English Communication', code: '20EG01T', type: 'Theory', semester: '2nd', studentCount: 63, cie1MaxMarks: 50, cie2MaxMarks: 0, totalMaxMarks: 50 },
+    { id: 'SUB003', name: 'Python', code: '20CS21P', type: 'Lab', semester: '2nd', studentCount: 63, cie1MaxMarks: 25, cie2MaxMarks: 25, totalMaxMarks: 50 },
+    { id: 'SUB004', name: 'CAEG', code: '20ME02P', type: 'Lab', semester: '2nd', studentCount: 63, cie1MaxMarks: 10, cie2MaxMarks: 40, totalMaxMarks: 50 }
 ];
 
 export const facultyClassAnalytics = {

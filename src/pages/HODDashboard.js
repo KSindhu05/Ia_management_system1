@@ -8,7 +8,8 @@ import {
 import {
     hodData, departmentStats, hodBranchComparison, departmentAlerts, resourceRequests,
     hodTrendData, hodGradeDistribution, atRiskStudents, facultyWorkload,
-    departments, subjectsByDept, getStudentsByDept, branchPerformanceData, iaSubmissionStatus
+    departments, subjectsByDept, getStudentsByDept, branchPerformanceData, iaSubmissionStatus,
+    englishMarks, mathsMarks
 } from '../utils/mockData';
 import styles from './HODDashboard.module.css';
 import {
@@ -39,44 +40,7 @@ const HODDashboard = () => {
     const [subjectMarks, setSubjectMarks] = useState({}); // Map: { studentId: { ia1c1: val, ia1c2: val ... } }
     const API_BASE = 'http://localhost:8080/api/marks';
 
-    useEffect(() => {
-        // Mock Data Fallback
-        const csSubjects = (subjectsByDept['CS'] || []).map((name, id) => ({
-            id: id + 1,
-            name: name,
-            department: 'CS',
-            co1MaxMarks: 25,
-            co2MaxMarks: 25,
-            totalMaxMarks: 50
-        }));
-        setSubjects(csSubjects);
-        if (csSubjects.length > 0) setSelectedSubject(csSubjects[0]);
-
-        const csStudents = getStudentsByDept('CS');
-        setStudents(csStudents);
-    }, []);
-
-    // Fetch marks when subject changes
-    // Mock Marks Loading
-    useEffect(() => {
-        if (selectedSubject && selectedSubject.id) {
-            // Generate mock marks map for the selected subject
-            const marksMap = {};
-            students.forEach(student => {
-                marksMap[student.id] = {
-                    'IA1': {
-                        student: { id: student.id },
-                        iaType: 'IA1',
-                        co1Score: Math.floor(Math.random() * 20) + 5,
-                        co2Score: Math.floor(Math.random() * 20) + 5
-                    }
-                };
-            });
-            setSubjectMarks(marksMap);
-        }
-    }, [selectedSubject, students]);
-
-    // Initial Load & Dept Change Logic
+    // Unified Initialization: Runs on mount and when Dept changes
     useEffect(() => {
         // Mock Login: User is "CS" HOD - MD Jaffar
         const userDept = 'CS';
@@ -84,15 +48,86 @@ const HODDashboard = () => {
         setIsMyDept(isAuthorized);
 
         if (isAuthorized) {
-            setDeptStudents(getStudentsByDept(selectedDept));
+            const fetchedStudents = getStudentsByDept(selectedDept);
+            setDeptStudents(fetchedStudents);
+            setStudents(fetchedStudents);
+
             if (subjectsByDept[selectedDept]) {
-                setSelectedSubject(subjectsByDept[selectedDept][0]);
+                // Generate rich subject objects
+                const richSubjects = subjectsByDept[selectedDept].map((name, id) => {
+                    let cie1Max = 35, cie2Max = 15, totalMax = 50;
+
+                    if (name === 'English Communication') {
+                        cie1Max = 50; cie2Max = 0; totalMax = 50;
+                    } else if (name === 'CAEG') {
+                        cie1Max = 8; cie2Max = 22; totalMax = 30; // 30 Total
+                    } else if (name === 'Python') {
+                        cie1Max = 25; cie2Max = 25; totalMax = 50;
+                    }
+
+                    return {
+                        id: id + 1,
+                        name: name,
+                        department: selectedDept,
+                        cie1MaxMarks: cie1Max,
+                        cie2MaxMarks: cie2Max,
+                        totalMaxMarks: totalMax
+                    };
+                });
+                setSubjects(richSubjects);
+                // Ensure we select the first subject with full details
+                setSelectedSubject(richSubjects[0]);
             }
         } else {
             // Clear sensitive data if unauthorized
             setDeptStudents([]);
+            setStudents([]);
+            setSubjects([]);
+            setSelectedSubject(null);
         }
     }, [selectedDept]);
+
+    // Generate Marks when Subject or Students change
+    useEffect(() => {
+        if (selectedSubject && selectedSubject.id && students.length > 0) {
+            // Generate mock marks map for the selected subject
+            const marksMap = {};
+            students.forEach((student, index) => {
+                let cie1, cie2;
+
+                if (selectedSubject.name === 'English Communication') {
+                    // Use Hardcoded marks for English
+                    const val = englishMarks[index];
+                    cie1 = val;
+                    cie2 = 0;
+                } else if (selectedSubject.name === 'Engineering Maths-II') {
+                    // Use Hardcoded marks for Maths
+                    const val = mathsMarks[index];
+                    if (val) {
+                        cie1 = val.cie1;
+                        cie2 = val.cie2;
+                    } else {
+                        cie1 = 0; cie2 = 0;
+                    }
+                } else {
+                    const max1 = selectedSubject.cie1MaxMarks || 35;
+                    const max2 = selectedSubject.cie2MaxMarks || 15;
+                    cie1 = max1 > 0 ? Math.floor(Math.random() * (max1 - 5)) + 5 : 0;
+                    cie2 = max2 > 0 ? Math.floor(Math.random() * (max2 - 2)) + 2 : 0;
+                }
+
+                marksMap[student.id] = {
+                    'IA1': {
+                        student: { id: student.id },
+                        iaType: 'IA1',
+                        cie1Score: cie1,
+                        cie2Score: cie2
+                    }
+                };
+            });
+            setSubjectMarks(marksMap);
+        }
+    }, [selectedSubject, students]);
 
     const menuItems = [
         { label: 'Dashboard Overview', path: '#overview', icon: <LayoutDashboard size={20} />, active: activeTab === 'overview', onClick: () => setActiveTab('overview') },
@@ -124,15 +159,15 @@ const HODDashboard = () => {
     };
 
     const handleMarkChange = (studentId, field, value) => {
-        // field is 'co1' or 'co2'
+        // field is 'cie1' or 'cie2'
         let numValue = parseInt(value, 10);
         if (value === '') numValue = 0;
         else if (isNaN(numValue)) return;
 
         // Dynamic Clamping based on subject config
         let max = 0;
-        if (field === 'co1') max = selectedSubject?.co1MaxMarks || 0;
-        else if (field === 'co2') max = selectedSubject?.co2MaxMarks || 0;
+        if (field === 'cie1') max = selectedSubject?.cie1MaxMarks || 0;
+        else if (field === 'cie2') max = selectedSubject?.cie2MaxMarks || 0;
 
         if (numValue < 0) numValue = 0;
         if (numValue > max) numValue = max;
@@ -156,8 +191,8 @@ const HODDashboard = () => {
         Object.keys(editingMarks).forEach(stdId => {
             if (!newMarksMap[stdId]) newMarksMap[stdId] = { 'IA1': { student: { id: stdId } } };
 
-            if (editingMarks[stdId].co1 !== undefined) newMarksMap[stdId]['IA1'].co1Score = editingMarks[stdId].co1;
-            if (editingMarks[stdId].co2 !== undefined) newMarksMap[stdId]['IA1'].co2Score = editingMarks[stdId].co2;
+            if (editingMarks[stdId].cie1 !== undefined) newMarksMap[stdId]['IA1'].cie1Score = editingMarks[stdId].cie1;
+            if (editingMarks[stdId].cie2 !== undefined) newMarksMap[stdId]['IA1'].cie2Score = editingMarks[stdId].cie2;
         });
         setSubjectMarks(newMarksMap);
     };
@@ -417,7 +452,7 @@ const HODDashboard = () => {
                                         </div>
                                         <p className={styles.helperText}>
                                             Edit marks directly in the table. Changes are tracked locally until saved.
-                                            Max Marks: CO1 ({selectedSubject?.co1MaxMarks}), CO2 ({selectedSubject?.co2MaxMarks || 0}) - Total ({selectedSubject?.totalMaxMarks})
+                                            Max Marks: CIE-1 ({selectedSubject?.cie1MaxMarks}), CIE-2 ({selectedSubject?.cie2MaxMarks || 0}) - Total ({selectedSubject?.totalMaxMarks})
                                         </p>
                                         <div className={styles.tableWrapper}>
                                             <table className={styles.table}>
@@ -427,8 +462,8 @@ const HODDashboard = () => {
                                                         <th>Reg No</th>
                                                         <th>Student Name</th>
                                                         <th>Sem/Sec</th>
-                                                        {selectedSubject?.co1MaxMarks > 0 && <th>CO-1 ({selectedSubject.co1MaxMarks})</th>}
-                                                        {selectedSubject?.co2MaxMarks > 0 && <th>CO-2 ({selectedSubject.co2MaxMarks})</th>}
+                                                        {selectedSubject?.cie1MaxMarks > 0 && <th>CIE-1 ({selectedSubject.cie1MaxMarks})</th>}
+                                                        {selectedSubject?.cie2MaxMarks > 0 && <th>CIE-2 ({selectedSubject.cie2MaxMarks})</th>}
                                                         <th>Total ({selectedSubject?.totalMaxMarks})</th>
                                                     </tr>
                                                 </thead>
@@ -454,14 +489,14 @@ const HODDashboard = () => {
                                                         // Retrieve existing marks or edited marks
                                                         // editingMarks structure needs to change to: { studentId: { co1: val, co2: val } }
 
-                                                        const apiMark = sMarks[currentIA] || {};
+                                                        const iMarks = sMarks[currentIA] || {};
                                                         const editMark = editingMarks[student.id] || {};
 
-                                                        const valCO1 = editMark.co1 !== undefined ? editMark.co1 : (apiMark.co1Score || '');
-                                                        const valCO2 = editMark.co2 !== undefined ? editMark.co2 : (apiMark.co2Score || '');
+                                                        const valCIE1 = editMark.cie1 !== undefined ? editMark.cie1 : (iMarks.cie1Score || '');
+                                                        const valCIE2 = editMark.cie2 !== undefined ? editMark.cie2 : (iMarks.cie2Score || '');
 
                                                         // Total
-                                                        const total = (Number(valCO1) || 0) + (Number(valCO2) || 0);
+                                                        const total = (Number(valCIE1) || 0) + (Number(valCIE2) || 0);
 
                                                         return (
                                                             <tr key={student.id}>
@@ -470,24 +505,24 @@ const HODDashboard = () => {
                                                                 <td>{student.name}</td>
                                                                 <td>{student.sem} - {student.section}</td>
 
-                                                                {selectedSubject?.co1MaxMarks > 0 && (
+                                                                {selectedSubject?.cie1MaxMarks > 0 && (
                                                                     <td>
                                                                         <input
                                                                             type="number"
                                                                             className={styles.markInput}
-                                                                            value={valCO1}
-                                                                            onChange={(e) => handleMarkChange(student.id, 'co1', e.target.value)}
+                                                                            value={valCIE1}
+                                                                            onChange={(e) => handleMarkChange(student.id, 'cie1', e.target.value)}
                                                                         />
                                                                     </td>
                                                                 )}
 
-                                                                {selectedSubject?.co2MaxMarks > 0 && (
+                                                                {selectedSubject?.cie2MaxMarks > 0 && (
                                                                     <td>
                                                                         <input
                                                                             type="number"
                                                                             className={styles.markInput}
-                                                                            value={valCO2}
-                                                                            onChange={(e) => handleMarkChange(student.id, 'co2', e.target.value)}
+                                                                            value={valCIE2}
+                                                                            onChange={(e) => handleMarkChange(student.id, 'cie2', e.target.value)}
                                                                         />
                                                                     </td>
                                                                 )}

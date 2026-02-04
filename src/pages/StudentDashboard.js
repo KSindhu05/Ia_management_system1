@@ -146,28 +146,40 @@ const StudentDashboard = () => {
     const API_BASE = 'http://localhost:8080/api/marks';
 
     React.useEffect(() => {
-        // Fallback to Mock Data since Backend is not running
-        const currentSemSubjects = semesterData[5].theory; // Use Sem 5 data as 'current'
+        // Fallback to Mock Data - align with User's Sheet
+        const currentSemSubjects = [
+            { name: 'Engineering Maths-II', code: '20SC01T', cie1: 19, cie2: 1 },
+            { name: 'English Communication', code: '20EG01T', cie1: 15, cie2: 0 },
+            { name: 'Python', code: '20CS21P', cie1: 22, cie2: 24 },
+            { name: 'CAEG', code: '20ME02P', cie1: 7, cie2: 18 }
+        ];
 
-        const mockRealSubjects = currentSemSubjects.map((s, i) => ({
-            id: i + 1,
-            name: s.subject,
-            code: s.code,
-            co1MaxMarks: 25,
-            co2MaxMarks: 25,
-            totalMaxMarks: 50,
-            department: 'CS'
-        }));
+        const mockRealSubjects = currentSemSubjects.map((s, i) => {
+            let cie1Max = 35, cie2Max = 15, totalMax = 50;
+            if (s.name === 'English Communication') { cie1Max = 50; cie2Max = 0; }
+            else if (s.name === 'CAEG') { cie1Max = 8; cie2Max = 22; totalMax = 30; }
+            else if (s.name === 'Python') { cie1Max = 25; cie2Max = 25; }
+
+            return {
+                id: i + 1,
+                name: s.name,
+                code: s.code,
+                cie1MaxMarks: cie1Max,
+                cie2MaxMarks: cie2Max,
+                totalMaxMarks: totalMax,
+                department: 'CS'
+            };
+        });
         setRealSubjects(mockRealSubjects);
 
         const mockRealMarks = currentSemSubjects.map((s, i) => ({
             subject: { id: i + 1 },
             student: { id: 'me' },
             iaType: 'IA1',
-            co1Score: s.ia1,
-            co2Score: s.ia2,
-            totalScore: Math.min(s.ia1 + s.ia2, 50),
-            attendancePercentage: Math.floor(Math.random() * 15) + 80 // Random 80-95%
+            cie1Score: s.cie1,
+            cie2Score: s.cie2,
+            totalScore: s.cie1 + s.cie2,
+            attendancePercentage: Math.floor(Math.random() * 15) + 80
         }));
         setRealMarks(mockRealMarks);
     }, []);
@@ -235,8 +247,8 @@ const StudentDashboard = () => {
                                 <thead>
                                     <tr>
                                         <th>Subject</th>
-                                        <th>CO-1</th>
-                                        <th>CO-2</th>
+                                        <th>CIE-1</th>
+                                        <th>CIE-2</th>
                                         <th>Total</th>
                                         <th>Attendance</th>
                                     </tr>
@@ -252,8 +264,8 @@ const StudentDashboard = () => {
                                                         <span className={styles.subjectCode}>{sub.code}</span>
                                                     </div>
                                                 </td>
-                                                <td>{mark.co1Score != null ? mark.co1Score : '-'} / {sub.co1MaxMarks}</td>
-                                                <td>{mark.co2Score != null ? mark.co2Score : '-'} / {sub.co2MaxMarks}</td>
+                                                <td>{mark.cie1Score != null ? mark.cie1Score : '-'} / {sub.cie1MaxMarks}</td>
+                                                <td>{mark.cie2Score != null ? mark.cie2Score : '-'} / {sub.cie2MaxMarks}</td>
                                                 <td className={styles.avgCell}>
                                                     {(mark.totalScore || 0)} / {sub.totalMaxMarks}
                                                 </td>

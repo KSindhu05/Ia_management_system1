@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
 import { LayoutDashboard, Users, FilePlus, Save, AlertCircle, Upload, Phone, FileText, CheckCircle, Search, Filter, Mail, X, Download } from 'lucide-react';
-import { facultyData, facultySubjects, studentsList, facultyClassAnalytics, labSchedule } from '../utils/mockData';
+import { facultyData, facultySubjects, studentsList, facultyClassAnalytics, labSchedule, englishMarks, mathsMarks, caegMarks } from '../utils/mockData';
 import styles from './FacultyDashboard.module.css';
 
 const FacultyDashboard = () => {
@@ -65,17 +65,39 @@ const FacultyDashboard = () => {
         // Mock fetch marks for this subject
         // In a real app we would fetch by subjectId
         const marksMap = {};
-        studentsList.forEach(student => {
-            // Generate random marks within max limits
-            const max1 = subject.co1MaxMarks || 25;
-            const max2 = subject.co2MaxMarks || 25;
+        studentsList.forEach((student, index) => {
+            // Generate marks based on subject
+            const max1 = subject.cie1MaxMarks || 35;
+            const max2 = subject.cie2MaxMarks || 15;
+
+            let cie1 = 0, cie2 = 0;
+            if (subject.name === 'English Communication') {
+                const val = englishMarks[index];
+                cie1 = val; // Can be 'Ab'
+                cie2 = 0;
+            } else if (subject.name === 'Engineering Maths-II') {
+                const val = mathsMarks[index];
+                if (val) {
+                    cie1 = val.cie1;
+                    cie2 = val.cie2;
+                }
+            } else if (subject.name === 'CAEG') {
+                const val = caegMarks[index];
+                if (val) {
+                    cie1 = val.cie1;
+                    cie2 = val.cie2;
+                }
+            } else {
+                cie1 = max1 > 0 ? Math.floor(Math.random() * (max1 - 5)) + 5 : 0;
+                cie2 = max2 > 0 ? Math.floor(Math.random() * (max2 - 2)) + 2 : 0;
+            }
 
             marksMap[student.id] = {
                 'IA1': {
                     student: { id: student.id },
                     iaType: 'IA1',
-                    co1Score: max1 > 0 ? Math.floor(Math.random() * (max1 - 5)) + 5 : 0,
-                    co2Score: max2 > 0 ? Math.floor(Math.random() * (max2 - 2)) + 2 : 0
+                    cie1Score: cie1,
+                    cie2Score: cie2
                 }
             };
         });
@@ -88,8 +110,8 @@ const FacultyDashboard = () => {
         else if (isNaN(numValue)) return;
 
         let max = 0;
-        if (field === 'co1') max = selectedSubject?.co1MaxMarks || 0;
-        else if (field === 'co2') max = selectedSubject?.co2MaxMarks || 0;
+        if (field === 'cie1') max = selectedSubject?.cie1MaxMarks || 0;
+        else if (field === 'cie2') max = selectedSubject?.cie2MaxMarks || 0;
 
         if (numValue < 0) numValue = 0;
         if (numValue > max) numValue = max;
@@ -107,9 +129,9 @@ const FacultyDashboard = () => {
         if (selectedSubject) {
             const sMarks = marks[student.id] || {};
             const ia1Mark = sMarks['IA1'] || {};
-            const valCO1 = sMarks.co1 !== undefined ? sMarks.co1 : (ia1Mark.co1Score != null ? ia1Mark.co1Score : 0);
-            const valCO2 = sMarks.co2 !== undefined ? sMarks.co2 : (ia1Mark.co2Score != null ? ia1Mark.co2Score : 0);
-            return (Number(valCO1) || 0) + (Number(valCO2) || 0);
+            const valCIE1 = sMarks.cie1 !== undefined ? sMarks.cie1 : (ia1Mark.cie1Score != null ? ia1Mark.cie1Score : 0);
+            const valCIE2 = sMarks.cie2 !== undefined ? sMarks.cie2 : (ia1Mark.cie2Score != null ? ia1Mark.cie2Score : 0);
+            return (Number(valCIE1) || 0) + (Number(valCIE2) || 0);
         }
         return "-";
     };
@@ -481,7 +503,7 @@ const FacultyDashboard = () => {
                             <h2 className={styles.sectionTitle}>Update Marks: {selectedSubject.name}</h2>
                             <p className={styles.sectionSubtitle}>{selectedSubject.code} | {selectedSubject.department}</p>
                             <span className={styles.modeBadge}>
-                                Max Marks: CO1({selectedSubject.co1MaxMarks}), CO2({selectedSubject.co2MaxMarks})
+                                Max Marks: CIE-1({selectedSubject.cie1MaxMarks}), CIE-2({selectedSubject.cie2MaxMarks})
                             </span>
                         </div>
                     </div>
@@ -502,8 +524,8 @@ const FacultyDashboard = () => {
                                     <th>Sl No</th>
                                     <th>Reg No</th>
                                     <th>Student Name</th>
-                                    {selectedSubject?.co1MaxMarks > 0 && <th>CO-1 ({selectedSubject.co1MaxMarks})</th>}
-                                    {selectedSubject?.co2MaxMarks > 0 && <th>CO-2 ({selectedSubject.co2MaxMarks})</th>}
+                                    {selectedSubject?.cie1MaxMarks > 0 && <th>CIE-1 ({selectedSubject.cie1MaxMarks})</th>}
+                                    {selectedSubject?.cie2MaxMarks > 0 && <th>CIE-2 ({selectedSubject.cie2MaxMarks})</th>}
                                     <th>Total ({selectedSubject?.totalMaxMarks})</th>
                                 </tr>
                             </thead>
@@ -516,33 +538,33 @@ const FacultyDashboard = () => {
                                     const ia1Mark = sMarks['IA1'] || {};
 
                                     // Check if we have a direct edit (top-level key) or fallback to API object
-                                    const valCO1 = sMarks.co1 !== undefined ? sMarks.co1 : (ia1Mark.co1Score != null ? ia1Mark.co1Score : '');
-                                    const valCO2 = sMarks.co2 !== undefined ? sMarks.co2 : (ia1Mark.co2Score != null ? ia1Mark.co2Score : '');
+                                    const valCIE1 = sMarks.cie1 !== undefined ? sMarks.cie1 : (ia1Mark.cie1Score != null ? ia1Mark.cie1Score : '');
+                                    const valCIE2 = sMarks.cie2 !== undefined ? sMarks.cie2 : (ia1Mark.cie2Score != null ? ia1Mark.cie2Score : '');
 
-                                    const total = (Number(valCO1) || 0) + (Number(valCO2) || 0);
+                                    const total = (Number(valCIE1) || 0) + (Number(valCIE2) || 0);
 
                                     return (
                                         <tr key={student.id}>
                                             <td>{index + 1}</td>
                                             <td>{student.regNo}</td>
                                             <td>{student.name}</td>
-                                            {selectedSubject?.co1MaxMarks > 0 && (
+                                            {selectedSubject?.cie1MaxMarks > 0 && (
                                                 <td>
                                                     <input
                                                         type="number"
                                                         className={styles.markInput}
-                                                        value={valCO1}
-                                                        onChange={(e) => handleMarkChange(student.id, 'co1', e.target.value)}
+                                                        value={valCIE1}
+                                                        onChange={(e) => handleMarkChange(student.id, 'cie1', e.target.value)}
                                                     />
                                                 </td>
                                             )}
-                                            {selectedSubject?.co2MaxMarks > 0 && (
+                                            {selectedSubject?.cie2MaxMarks > 0 && (
                                                 <td>
                                                     <input
                                                         type="number"
                                                         className={styles.markInput}
-                                                        value={valCO2}
-                                                        onChange={(e) => handleMarkChange(student.id, 'co2', e.target.value)}
+                                                        value={valCIE2}
+                                                        onChange={(e) => handleMarkChange(student.id, 'cie2', e.target.value)}
                                                     />
                                                 </td>
                                             )}
