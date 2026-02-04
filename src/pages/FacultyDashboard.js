@@ -1,19 +1,32 @@
-
 import React, { useState } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
-import { LayoutDashboard, Users, FilePlus, Save, AlertCircle, Upload, Calendar, Phone, FileText, CheckCircle, Search, Filter, MoreVertical, Mail, Download, Printer } from 'lucide-react';
+import { LayoutDashboard, Users, FilePlus, Save, AlertCircle, Upload, Phone, FileText, CheckCircle, Search, Filter, Mail, X, Download } from 'lucide-react';
 import { facultyData, facultySubjects, studentsList, facultyClassAnalytics, labSchedule } from '../utils/mockData';
 import styles from './FacultyDashboard.module.css';
 
 const FacultyDashboard = () => {
     const [activeSection, setActiveSection] = useState('Overview');
     const [selectedSubject, setSelectedSubject] = useState(null);
-    const [marks, setMarks] = useState(studentsList);
+    const [marks, setMarks] = useState({}); // Map { studentId: { co1: val... } }
     const [saving, setSaving] = useState(false);
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedSection, setSelectedSection] = useState('All');
-    const [selectedBatch, setSelectedBatch] = useState('All');
+
+    // API State
+    const [subjects, setSubjects] = useState([]);
+    const [students, setStudents] = useState([]);
+    const API_BASE = 'http://localhost:8080/api/marks';
+
+    React.useEffect(() => {
+        // Fallback to Mock Data
+        setSubjects(facultySubjects); // Use imported mock data directly
+        setStudents(studentsList);    // Use imported mock data directly
+    }, []);
+
+    // -- Enhancement State --
+    const [showProfileModal, setShowProfileModal] = useState(false);
+    const [selectedStudent, setSelectedStudent] = useState(null);
+    const [showUploadModal, setShowUploadModal] = useState(false);
 
     const menuItems = [
         {
@@ -48,50 +61,215 @@ const FacultyDashboard = () => {
 
     const handleSubjectClick = (subject) => {
         setSelectedSubject(subject);
-        setActiveSection('IA Entry'); // Auto-switch to IA Entry when a subject is clicked
+        setActiveSection('IA Entry');
+        // Mock fetch marks for this subject
+        // In a real app we would fetch by subjectId
+        const marksMap = {};
+        studentsList.forEach(student => {
+            // Generate random marks within max limits
+            const max1 = subject.co1MaxMarks || 25;
+            const max2 = subject.co2MaxMarks || 25;
+
+            marksMap[student.id] = {
+                'IA1': {
+                    student: { id: student.id },
+                    iaType: 'IA1',
+                    co1Score: max1 > 0 ? Math.floor(Math.random() * (max1 - 5)) + 5 : 0,
+                    co2Score: max2 > 0 ? Math.floor(Math.random() * (max2 - 2)) + 2 : 0
+                }
+            };
+        });
+        setMarks(marksMap);
     };
 
-    const handleMarkChange = (studentId, field, value, maxMarks = 30) => {
-        // Allow clearing the field
-        if (value === '') {
-            setMarks(prevMarks =>
-                prevMarks.map(student =>
-                    student.id === studentId ? { ...student, [field]: '' } : student
-                )
-            );
-            return;
+    const handleMarkChange = (studentId, field, value) => {
+        let numValue = parseInt(value, 10);
+        if (value === '') numValue = 0;
+        else if (isNaN(numValue)) return;
+
+        let max = 0;
+        if (field === 'co1') max = selectedSubject?.co1MaxMarks || 0;
+        else if (field === 'co2') max = selectedSubject?.co2MaxMarks || 0;
+
+        if (numValue < 0) numValue = 0;
+        if (numValue > max) numValue = max;
+
+        setMarks(prev => ({
+            ...prev,
+            [studentId]: {
+                ...prev[studentId],
+                [field]: numValue
+            }
+        }));
+    };
+
+    const calculateAverage = (student) => {
+        if (selectedSubject) {
+            const sMarks = marks[student.id] || {};
+            const ia1Mark = sMarks['IA1'] || {};
+            const valCO1 = sMarks.co1 !== undefined ? sMarks.co1 : (ia1Mark.co1Score != null ? ia1Mark.co1Score : 0);
+            const valCO2 = sMarks.co2 !== undefined ? sMarks.co2 : (ia1Mark.co2Score != null ? ia1Mark.co2Score : 0);
+            return (Number(valCO1) || 0) + (Number(valCO2) || 0);
         }
+        return "-";
+    };
 
-        // Validate marks based on passed limit
-        const numValue = Math.min(maxMarks, Math.max(0, Number(value)));
+    const handleSave = async () => {
+        setSaving(true);
+        const updates = [];
 
-        setMarks(prevMarks =>
-            prevMarks.map(student =>
-                student.id === studentId ? { ...student, [field]: numValue } : student
-            )
+        // Mock Save Operation
+        // We simulate a delay to show the "Saving..." state
+        const mockSave = new Promise((resolve) => {
+            setTimeout(() => {
+                resolve('Success');
+            }, 800);
+        });
+
+        // Update local state is already happening via setMarks in handleMarkChange
+        // But we might want to consolidate 'marks' if we had a separate 'edited' state like in HOD dash
+        // For here, just waiting is enough to simulate API call
+        updates.push(mockSave);
+
+        try {
+            await Promise.all(updates);
+            showToast('IA Marks Saved & Synced!', 'success');
+        } catch (e) {
+            showToast('Error saving marks', 'error');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    // --- NEW FEATURE: EXPORT CSV ---
+    const downloadCSV = () => {
+        const headers = ['Roll No', 'Name', 'Section', 'Batch', 'IA-1', 'IA-2', 'IA-3', 'Average'];
+        const rows = marks.map(s => [
+            s.rollNo,
+            s.name,
+            s.section,
+            s.batch,
+            s.ia1 || 0,
+            s.ia2 || 0,
+            s.ia3 || 0,
+            calculateAverage(s)
+        ]);
+
+        const csvContent = "data:text/csv;charset=utf-8,"
+            + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `IA_Marks_Export.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast('Marks Exported to CSV', 'success');
+    };
+
+    // --- NEW FEATURE: PROFILE MODAL ---
+    const openProfile = (student) => {
+        setSelectedStudent(student);
+        setShowProfileModal(true);
+    };
+
+    const renderStudentProfileModal = () => {
+        if (!showProfileModal || !selectedStudent) return null;
+
+        return (
+            <div className={styles.modalOverlay} onClick={() => setShowProfileModal(false)}>
+                <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+                    <div className={styles.modalHeader}>
+                        <h2>Student Profile</h2>
+                        <button className={styles.closeBtn} onClick={() => setShowProfileModal(false)}>
+                            <X size={20} />
+                        </button>
+                    </div>
+                    <div className={styles.modalBody}>
+                        <div className={styles.profileHeader}>
+                            <div className={styles.profileAvatar}>
+                                {selectedStudent.name.charAt(0)}
+                            </div>
+                            <div className={styles.profileInfo}>
+                                <h3>{selectedStudent.name}</h3>
+                                <p className={styles.profileMeta}>{selectedStudent.rollNo}</p>
+                                <span className={`${styles.badge} ${styles.good}`}>
+                                    {selectedStudent.sem} Sem - {selectedStudent.section} ({selectedStudent.batch})
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className={styles.infoGrid}>
+                            <div className={styles.infoItem}>
+                                <span className={styles.infoLabel}>Email Address</span>
+                                <span className={styles.infoValue}>{selectedStudent.rollNo.toLowerCase()}@college.edu</span>
+                            </div>
+                            <div className={styles.infoItem}>
+                                <span className={styles.infoLabel}>Attendance</span>
+                                <div className={styles.attendanceBarContainer}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                                        <span>Current Semester</span>
+                                        <span style={{ fontWeight: 'bold' }}>{selectedStudent.attendance}%</span>
+                                    </div>
+                                    <div className={styles.attendanceTrack}>
+                                        <div className={styles.attendanceFill} style={{ width: `${selectedStudent.attendance}%` }}></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className={styles.infoItem}>
+                                <span className={styles.infoLabel}>Academic Standing</span>
+                                <span className={styles.infoValue} style={{ color: '#059669' }}>Good Standing</span>
+                            </div>
+                            <div className={styles.infoItem}>
+                                <span className={styles.infoLabel}>Parent Contact</span>
+                                <span className={styles.infoValue}>+91 98765 43210</span>
+                            </div>
+                        </div>
+
+                        <button className={styles.saveBtn} style={{ width: '100%' }} onClick={() => showToast('Full Report Downloaded')}>
+                            <FileText size={18} /> Download Full Academic Report
+                        </button>
+                    </div>
+                </div>
+            </div>
         );
     };
 
-    const calculateAverage = (s) => {
-        const i1 = Number(s.ia1 || 0);
-        const i2 = Number(s.ia2 || 0);
-        const i3 = Number(s.ia3 || 0);
+    // --- NEW FEATURE: UPLOAD MODAL ---
+    const renderUploadModal = () => {
+        if (!showUploadModal) return null;
 
-        // If it's a specific subject view, check its type
-        if (selectedSubject?.type === 'Lab') {
-            return Math.round((i1 + i2) / 2);
-        }
-
-        return Math.round((i1 + i2 + i3) / 3);
+        return (
+            <div className={styles.modalOverlay} onClick={() => setShowUploadModal(false)}>
+                <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+                    <div className={styles.modalHeader}>
+                        <h2>Bulk Upload Marks</h2>
+                        <button className={styles.closeBtn} onClick={() => setShowUploadModal(false)}>
+                            <X size={20} />
+                        </button>
+                    </div>
+                    <div className={styles.modalBody}>
+                        <div className={styles.uploadArea} onClick={() => {
+                            showToast('File Upload Simulation Success');
+                            setShowUploadModal(false);
+                        }}>
+                            <Upload size={48} color="#2563eb" />
+                            <div>
+                                <p className={styles.uploadText}>Click to upload or drag and drop</p>
+                                <p className={styles.uploadSubtext}>Excel, CSV files only (Max 2MB)</p>
+                            </div>
+                        </div>
+                        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                            <button className={styles.secondaryBtn} onClick={() => setShowUploadModal(false)}>Cancel</button>
+                            <button className={styles.saveBtn} disabled>Upload Pending...</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
     };
 
-    const handleSave = () => {
-        setSaving(true);
-        setTimeout(() => {
-            setSaving(false);
-            showToast('IA Marks Saved Successfully!', 'success');
-        }, 1000);
-    };
 
     // --- VIEW RENDERERS ---
 
@@ -163,7 +341,7 @@ const FacultyDashboard = () => {
                             <button className={styles.actionBtn} onClick={() => showToast('Report Generated!')}>
                                 <FileText size={18} /> Generate Report
                             </button>
-                            <button className={styles.actionBtn} onClick={() => showToast('Bulk Upload Modal Opened')}>
+                            <button className={styles.actionBtn} onClick={() => setShowUploadModal(true)}>
                                 <Upload size={18} /> Bulk Marks Upload
                             </button>
                             <button className={styles.actionBtn} onClick={() => showToast('Calling Parent...')}>
@@ -199,11 +377,13 @@ const FacultyDashboard = () => {
     );
 
     const renderMyStudents = () => {
-        // Mock larger list for demo if needed, or filter existing
-        const filteredStudents = marks.filter(s =>
-            s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.rollNo.toLowerCase().includes(searchTerm.toLowerCase())
-        );
+        // Use API students
+        const filteredStudents = students
+            .filter(s =>
+                s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                s.regNo.toLowerCase().includes(searchTerm.toLowerCase())
+            )
+            .sort((a, b) => a.name.localeCompare(b.name));
 
         return (
             <div className={styles.sectionContainer}>
@@ -221,7 +401,6 @@ const FacultyDashboard = () => {
                             />
                         </div>
                         <button className={styles.filterBtn}><Filter size={16} /> Filter</button>
-                        <button className={styles.secondaryBtn}><Printer size={16} /> Print List</button>
                     </div>
                 </div>
 
@@ -233,28 +412,28 @@ const FacultyDashboard = () => {
                                     <th>Roll No</th>
                                     <th>Name</th>
                                     <th>Semester</th>
-                                    <th>Attendance</th>
-                                    <th>Avg IA Score</th>
+                                    <th>Section</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {filteredStudents.map((std) => (
-                                    <tr key={std.id}>
-                                        <td className={styles.codeText}>{std.rollNo}</td>
+                                    <tr key={std.id} style={{ cursor: 'pointer' }} onClick={() => openProfile(std)}>
+                                        <td className={styles.codeText}>{std.regNo}</td>
                                         <td className={styles.subjectText}>{std.name}</td>
-                                        <td>5th</td>
-                                        <td>
-                                            <span className={`${styles.badge} ${std.ia1 > 20 ? styles.excellent : styles.good}`}>
-                                                {90 - (std.id * 2)}% {/* Randomish attendance */}
-                                            </span>
-                                        </td>
-                                        <td className={styles.totalCell}>{calculateAverage(std)}</td>
+                                        <td>{std.semester}</td>
+                                        <td>{std.section}</td>
                                         <td>
                                             <div className={styles.actionIcons}>
-                                                <button title="View Profile" className={styles.iconBtn}><Users size={16} /></button>
-                                                <button title="Email" className={styles.iconBtn}><Mail size={16} /></button>
-                                                <button title="Report" className={styles.iconBtn}><AlertCircle size={16} /></button>
+                                                <button title="View Profile" className={styles.iconBtn} onClick={(e) => { e.stopPropagation(); openProfile(std); }}>
+                                                    <Users size={16} />
+                                                </button>
+                                                <button title="Email" className={styles.iconBtn} onClick={(e) => e.stopPropagation()}>
+                                                    <Mail size={16} />
+                                                </button>
+                                                <button title="Report" className={styles.iconBtn} onClick={(e) => e.stopPropagation()}>
+                                                    <AlertCircle size={16} />
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -271,18 +450,20 @@ const FacultyDashboard = () => {
         if (!selectedSubject) {
             return (
                 <div className={styles.emptyState}>
-                    <h2 className={styles.sectionTitle}>Select a Subject to Enter Marks</h2>
+                    <div className={styles.emptyStateIcon}><FilePlus size={48} /></div>
+                    <h3>Select a Subject to Enter Marks</h3>
+                    <p>Click on a subject card above (Overview) or navigate to My Students.</p>
                     <div className={styles.cardsGrid}>
-                        {facultySubjects.map(sub => (
-                            <div key={sub.id} className={styles.subjectCard} onClick={() => setSelectedSubject(sub)}>
+                        {subjects.map(sub => (
+                            <div key={sub.id} className={styles.subjectCard} onClick={() => handleSubjectClick(sub)}>
                                 <div className={styles.cardHeader}>
                                     <h3 className={styles.subjectName}>{sub.name}</h3>
                                     <span className={styles.termBadge}>{sub.semester} Sem</span>
                                 </div>
                                 <div className={styles.subjectFooter}>
-                                    <button className={styles.enterBtn} style={{ marginTop: '0.5rem', width: 'auto', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
-                                        Enter Marks
-                                    </button>
+                                    <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#6b7280' }}>
+                                        {sub.code}
+                                    </div>
                                 </div>
                             </div>
                         ))}
@@ -291,149 +472,93 @@ const FacultyDashboard = () => {
             );
         }
 
-        const maxMarks = selectedSubject.type === 'Lab' ? 20 : 30;
-
         return (
-            <section className={styles.marksSection}>
-                <div className={styles.marksHeader}>
-                    <button className={styles.backBtn} onClick={() => setSelectedSubject(null)}>
-                        ← Back to Subjects
-                    </button>
-                    <div>
-                        <h2 className={styles.sectionTitle}>{selectedSubject.name} - IA Marks Entry</h2>
-                        <span className={styles.subtitle} style={{ fontSize: '0.9rem' }}>
-                            Max Marks: {maxMarks} ({selectedSubject.type || 'Theory'})
-                        </span>
+            <div className={styles.sectionContainer}>
+                <div className={styles.sectionHeader}>
+                    <div className={styles.headerTitleGroup}>
+                        <button className={styles.backBtn} onClick={() => setSelectedSubject(null)}>← Back</button>
+                        <div>
+                            <h2 className={styles.sectionTitle}>Update Marks: {selectedSubject.name}</h2>
+                            <p className={styles.sectionSubtitle}>{selectedSubject.code} | {selectedSubject.department}</p>
+                            <span className={styles.modeBadge}>
+                                Max Marks: CO1({selectedSubject.co1MaxMarks}), CO2({selectedSubject.co2MaxMarks})
+                            </span>
+                        </div>
                     </div>
-                    <div className={styles.headerButtons}>
-                        <button className={styles.secondaryBtn} onClick={() => showToast('Importing Excel...')}>
-                            <Upload size={16} /> Import Excel
-                        </button>
-                        <button className={styles.saveBtn} onClick={handleSave} disabled={saving}>
-                            <Save size={18} /> {saving ? 'Saving...' : 'Save All Changes'}
+
+                    <div className={styles.headerActions}>
+                        <button className={`${styles.saveBtn} ${saving ? styles.saving : ''}`} onClick={handleSave} disabled={saving}>
+                            <Save size={16} />
+                            {saving ? 'Saving...' : 'Save All Changes'}
                         </button>
                     </div>
                 </div>
 
-                <div className={styles.tableContainer}>
-                    <div className={styles.filterBar} style={{ padding: '1rem', display: 'flex', gap: '1rem', alignItems: 'center', borderBottom: '1px solid #e5e7eb', flexWrap: 'wrap' }}>
-                        <div className={styles.filterItem}>
-                            <label style={{ marginRight: '0.5rem', fontWeight: 500, color: '#374151' }}>Section:</label>
-                            <select
-                                value={selectedSection}
-                                onChange={(e) => setSelectedSection(e.target.value)}
-                                style={{ padding: '0.3rem', borderRadius: '4px', border: '1px solid #d1d5db' }}
-                            >
-                                <option value="All">All Sections</option>
-                                <option value="A">Section A</option>
-                                <option value="B">Section B</option>
-                            </select>
-                        </div>
-                        <div className={styles.filterItem}>
-                            <label style={{ marginRight: '0.5rem', fontWeight: 500, color: '#374151' }}>Batch:</label>
-                            <select
-                                value={selectedBatch}
-                                onChange={(e) => setSelectedBatch(e.target.value)}
-                                style={{ padding: '0.3rem', borderRadius: '4px', border: '1px solid #d1d5db' }}
-                            >
-                                <option value="All">All Batches</option>
-                                <option value="B1">Batch B1</option>
-                                <option value="B2">Batch B2</option>
-                            </select>
-                        </div>
-                        <div className={styles.searchWrapper} style={{ marginLeft: 'auto', position: 'relative' }}>
-                            <Search size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
-                            <input
-                                type="text"
-                                placeholder="Search by Name or Reg No..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                style={{
-                                    padding: '0.4rem 0.5rem 0.4rem 2rem',
-                                    borderRadius: '4px',
-                                    border: '1px solid #d1d5db',
-                                    width: '250px',
-                                    fontSize: '0.9rem'
-                                }}
-                            />
-                        </div>
-                    </div>
-                    <table className={styles.table}>
-                        <thead>
-                            <tr>
-                                <th>Reg No</th>
-                                <th>Student Name</th>
-                                <th>Sec / Batch</th>
-                                <th>{selectedSubject.type === 'Lab' ? 'Lab-1' : 'IA-1'} ({maxMarks})</th>
-                                <th>{selectedSubject.type === 'Lab' ? 'Lab-2' : 'IA-2'} ({maxMarks})</th>
-                                {selectedSubject.type !== 'Lab' && <th>IA-3 ({maxMarks})</th>}
-                                <th>Average</th>
-                                <th>Performance</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {marks
-                                .filter(student => (selectedSection === 'All' || student.section === selectedSection) &&
-                                    (selectedBatch === 'All' || student.batch === selectedBatch) &&
-                                    (student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                        student.rollNo.toLowerCase().includes(searchTerm.toLowerCase()))
-                                )
-                                .map((student) => {
-                                    const avg = calculateAverage(student);
+                <div className={styles.card}>
+                    <div className={styles.tableContainer}>
+                        <table className={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th>Sl No</th>
+                                    <th>Reg No</th>
+                                    <th>Student Name</th>
+                                    {selectedSubject?.co1MaxMarks > 0 && <th>CO-1 ({selectedSubject.co1MaxMarks})</th>}
+                                    {selectedSubject?.co2MaxMarks > 0 && <th>CO-2 ({selectedSubject.co2MaxMarks})</th>}
+                                    <th>Total ({selectedSubject?.totalMaxMarks})</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {students.map((student, index) => {
+                                    const sMarks = marks[student.id] || {};
+                                    // Mapping logic: local edits override API data
+                                    // In handleSubjectClick, we populated 'marks' with API data using [iaType] keys.
+                                    // 'IA1' is hardcoded for now, as per HOD dashboard.
+                                    const ia1Mark = sMarks['IA1'] || {};
+
+                                    // Check if we have a direct edit (top-level key) or fallback to API object
+                                    const valCO1 = sMarks.co1 !== undefined ? sMarks.co1 : (ia1Mark.co1Score != null ? ia1Mark.co1Score : '');
+                                    const valCO2 = sMarks.co2 !== undefined ? sMarks.co2 : (ia1Mark.co2Score != null ? ia1Mark.co2Score : '');
+
+                                    const total = (Number(valCO1) || 0) + (Number(valCO2) || 0);
+
                                     return (
-                                        <tr key={student.id} className={avg < (maxMarks * 0.4) ? styles.lowPerformance : ''}>
-                                            <td>{student.rollNo}</td>
-                                            <td>
-                                                {student.name}
-                                                {avg < (maxMarks * 0.4) && <AlertCircle size={14} color="#ef4444" style={{ marginLeft: 6 }} />}
-                                            </td>
-                                            <td>
-                                                <span className={styles.codeBadge}>{student.section || '-'} / {student.batch || '-'}</span>
-                                            </td>
-                                            <td>
-                                                <input
-                                                    type="number"
-                                                    value={student.ia1}
-                                                    className={styles.markInput}
-                                                    onFocus={(e) => e.target.select()}
-                                                    onChange={(e) => handleMarkChange(student.id, 'ia1', e.target.value, maxMarks)}
-                                                />
-                                            </td>
-                                            <td>
-                                                <input
-                                                    type="number"
-                                                    value={student.ia2}
-                                                    className={styles.markInput}
-                                                    onFocus={(e) => e.target.select()}
-                                                    onChange={(e) => handleMarkChange(student.id, 'ia2', e.target.value, maxMarks)}
-                                                />
-                                            </td>
-                                            {selectedSubject.type !== 'Lab' && (
+                                        <tr key={student.id}>
+                                            <td>{index + 1}</td>
+                                            <td>{student.regNo}</td>
+                                            <td>{student.name}</td>
+                                            {selectedSubject?.co1MaxMarks > 0 && (
                                                 <td>
                                                     <input
                                                         type="number"
-                                                        value={student.ia3}
                                                         className={styles.markInput}
-                                                        onFocus={(e) => e.target.select()}
-                                                        onChange={(e) => handleMarkChange(student.id, 'ia3', e.target.value, maxMarks)}
+                                                        value={valCO1}
+                                                        onChange={(e) => handleMarkChange(student.id, 'co1', e.target.value)}
                                                     />
                                                 </td>
                                             )}
-                                            <td className={styles.avgCell}>{avg}</td>
-                                            <td>
-                                                <span className={`${styles.badge} ${avg >= (maxMarks * 0.8) ? styles.excellent : avg >= (maxMarks * 0.4) ? styles.good : styles.poor}`}>
-                                                    {avg >= (maxMarks * 0.4) ? 'Pass' : 'Low'}
-                                                </span>
-                                            </td>
+                                            {selectedSubject?.co2MaxMarks > 0 && (
+                                                <td>
+                                                    <input
+                                                        type="number"
+                                                        className={styles.markInput}
+                                                        value={valCO2}
+                                                        onChange={(e) => handleMarkChange(student.id, 'co2', e.target.value)}
+                                                    />
+                                                </td>
+                                            )}
+                                            <td style={{ fontWeight: 'bold' }}>{Math.min(total, selectedSubject?.totalMaxMarks || 100)}</td>
                                         </tr>
-                                    );
+                                    )
                                 })}
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </section>
+            </div>
         );
     };
+
+
 
     return (
         <DashboardLayout menuItems={menuItems}>
@@ -447,6 +572,10 @@ const FacultyDashboard = () => {
             {activeSection === 'Overview' && renderOverview()}
             {activeSection === 'My Students' && renderMyStudents()}
             {activeSection === 'IA Entry' && renderIAEntry()}
+
+            {/* MODALS */}
+            {renderStudentProfileModal()}
+            {renderUploadModal()}
 
             {toast.show && (
                 <div className={`${styles.toast} ${toast.type === 'error' ? styles.error : ''}`}>

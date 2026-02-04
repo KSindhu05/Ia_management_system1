@@ -7,12 +7,12 @@ import styles from './StudentDashboard.module.css';
 // --- DATA DEFINITIONS ---
 
 const studentInfo = {
-    name: 'Aruna',
-    rollNo: '21CS045',
+    name: 'A KAVITHA',
+    rollNo: '459CS25001',
     branch: 'Computer Science',
-    semester: '5th',
-    attendance: 78,
-    cgpa: 8.2,
+    semester: '2nd',
+    attendance: 87,
+    cgpa: 9.0,
 };
 
 // --- SOPHISTICATED MOCK DATA FOR IA MARKS (SEM 1-6) ---
@@ -140,9 +140,41 @@ const StudentDashboard = () => {
     const [activeSection, setActiveSection] = useState('Overview');
     const [toast, setToast] = useState({ show: false, message: '' });
 
+    // API State
+    const [realMarks, setRealMarks] = useState([]);
+    const [realSubjects, setRealSubjects] = useState([]);
+    const API_BASE = 'http://localhost:8080/api/marks';
+
+    React.useEffect(() => {
+        // Fallback to Mock Data since Backend is not running
+        const currentSemSubjects = semesterData[5].theory; // Use Sem 5 data as 'current'
+
+        const mockRealSubjects = currentSemSubjects.map((s, i) => ({
+            id: i + 1,
+            name: s.subject,
+            code: s.code,
+            co1MaxMarks: 25,
+            co2MaxMarks: 25,
+            totalMaxMarks: 50,
+            department: 'CS'
+        }));
+        setRealSubjects(mockRealSubjects);
+
+        const mockRealMarks = currentSemSubjects.map((s, i) => ({
+            subject: { id: i + 1 },
+            student: { id: 'me' },
+            iaType: 'IA1',
+            co1Score: s.ia1,
+            co2Score: s.ia2,
+            totalScore: Math.min(s.ia1 + s.ia2, 50),
+            attendancePercentage: Math.floor(Math.random() * 15) + 80 // Random 80-95%
+        }));
+        setRealMarks(mockRealMarks);
+    }, []);
+
     // Filter States
     const [selectedSemester, setSelectedSemester] = useState('5'); // Default to current
-    const [selectedIA, setSelectedIA] = useState('All'); // All, IA-1, IA-2, IA-3
+    const [selectedIA, setSelectedIA] = useState('All'); // All, CIE-1, CIE-2, CIE-3
 
     const menuItems = [
         {
@@ -190,46 +222,47 @@ const StudentDashboard = () => {
     // --- RENDER HELPERS ---
 
     const renderOverview = () => {
-        // Use Semester 5 data for Overview summary
-        const currentSemData = semesterData[5].theory;
-        const avgScore = Math.round(currentSemData.reduce((acc, curr) => acc + curr.total, 0) / currentSemData.length);
-
         return (
             <div className={styles.mainGrid}>
                 <div className={styles.leftColumn}>
+                    {/* REAL DATA TABLE (2nd Sem) */}
                     <div className={styles.card}>
                         <div className={styles.cardHeader}>
-                            <h2 className={styles.cardTitle}>📊 Current Semester Overview (Sem 5)</h2>
-                            <button className={styles.downloadBtn} onClick={() => showToast('Downloading report...')}>
-                                <Download size={16} /> Export
-                            </button>
+                            <h2 className={styles.cardTitle}>📊 Current Semester Performance (Real-Time)</h2>
                         </div>
                         <div className={styles.tableContainer}>
                             <table className={styles.table}>
                                 <thead>
                                     <tr>
                                         <th>Subject</th>
-                                        <th>IA-1</th>
-                                        <th>IA-2</th>
-                                        <th>IA-3</th>
-                                        <th>Total (50)</th>
+                                        <th>CO-1</th>
+                                        <th>CO-2</th>
+                                        <th>Total</th>
+                                        <th>Attendance</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {currentSemData.map((mark, idx) => (
-                                        <tr key={idx}>
-                                            <td>
-                                                <div className={styles.subjectCell}>
-                                                    <span className={styles.subjectName}>{mark.subject}</span>
-                                                    <span className={styles.subjectCode}>{mark.code}</span>
-                                                </div>
-                                            </td>
-                                            <td>{mark.ia1}</td>
-                                            <td>{mark.ia2}</td>
-                                            <td>{mark.ia3}</td>
-                                            <td className={styles.avgCell}>{mark.total}</td>
-                                        </tr>
-                                    ))}
+                                    {realSubjects.length > 0 ? realSubjects.map((sub) => {
+                                        const mark = realMarks.find(m => m.subject.id === sub.id) || {};
+                                        return (
+                                            <tr key={sub.id}>
+                                                <td>
+                                                    <div className={styles.subjectCell}>
+                                                        <span className={styles.subjectName}>{sub.name}</span>
+                                                        <span className={styles.subjectCode}>{sub.code}</span>
+                                                    </div>
+                                                </td>
+                                                <td>{mark.co1Score != null ? mark.co1Score : '-'} / {sub.co1MaxMarks}</td>
+                                                <td>{mark.co2Score != null ? mark.co2Score : '-'} / {sub.co2MaxMarks}</td>
+                                                <td className={styles.avgCell}>
+                                                    {(mark.totalScore || 0)} / {sub.totalMaxMarks}
+                                                </td>
+                                                <td>{mark.attendancePercentage ? mark.attendancePercentage + '%' : '-'}</td>
+                                            </tr>
+                                        );
+                                    }) : (
+                                        <tr><td colSpan="5" style={{ textAlign: 'center', padding: '1rem' }}>Loading real-time data or no subjects found...</td></tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
@@ -267,8 +300,6 @@ const StudentDashboard = () => {
                             ))}
                         </div>
                     </div>
-
-
                 </div>
             </div>
         )

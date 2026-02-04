@@ -3,20 +3,17 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 // import { useTheme } from '../context/ThemeContext';
 import styles from './Sidebar.module.css';
-import { LogOut, BookOpen } from 'lucide-react';
+import { LogOut } from 'lucide-react';
+import collegeLogo from '../assets/college_logo.png';
 
 const Sidebar = ({ menuItems }) => {
     const { user, logout } = useAuth();
-    // const { isDarkMode, toggleTheme } = useTheme(); // Removed for now
+    // const { isDarkMode, toggleTheme } = useTheme(); 
 
     return (
         <aside className={styles.sidebar}>
             <div className={styles.logoSection}>
-                <BookOpen size={32} color="#fff" />
-                <div className={styles.logoText}>
-                    <span className={styles.collegeName}>Sanjay Gandhi</span>
-                    <span className={styles.subtext}>Polytechnic</span>
-                </div>
+                <img src={collegeLogo} alt="SGP Logo" className={styles.sidebarLogo} />
             </div>
 
             <div className={styles.userInfo}>

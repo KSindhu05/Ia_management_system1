@@ -10,4 +10,8 @@ public class BackendApplication {
 		SpringApplication.run(BackendApplication.class, args);
 	}
 
+	@org.springframework.context.annotation.Bean
+	public com.ia.management.service.PrincipalService principalService() {
+		return new com.ia.management.service.PrincipalService();
+	}
 }
