@@ -1,15 +1,9 @@
 package com.ia.management.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 
 @Entity
 @Table(name = "subjects")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class Subject {
 
     @Id
@@ -17,18 +11,46 @@ public class Subject {
     private Long id;
 
     @Column(unique = true, nullable = false)
-    private String code; // e.g., 20SC01T
+    private String code;
 
     @Column(nullable = false)
-    private String name; // e.g., Engineering Maths-II
+    private String name;
 
-    private String department; // "CS"
-    private String semester; // "2nd"
+    private String department;
+    private String semester;
+    private Integer maxMarks;
+    private String type;
 
-    // Configuration for Max Marks
-    // Configuration for Max Marks
-    private Integer maxMarks; // e.g., 50 for all CIEs
+    public Subject() {}
 
-    // Type
-    private String type; // "Theory" or "Lab"
+    public Subject(Long id, String code, String name, String department, String semester, Integer maxMarks, String type) {
+        this.id = id;
+        this.code = code;
+        this.name = name;
+        this.department = department;
+        this.semester = semester;
+        this.maxMarks = maxMarks;
+        this.type = type;
+    }
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getCode() { return code; }
+    public void setCode(String code) { this.code = code; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getDepartment() { return department; }
+    public void setDepartment(String department) { this.department = department; }
+
+    public String getSemester() { return semester; }
+    public void setSemester(String semester) { this.semester = semester; }
+
+    public Integer getMaxMarks() { return maxMarks; }
+    public void setMaxMarks(Integer maxMarks) { this.maxMarks = maxMarks; }
+
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
 }

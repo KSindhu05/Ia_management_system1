@@ -1,8 +1,8 @@
 package com.ia.management.service;
 
-import com.ia.management.model.IAMark;
+import com.ia.management.model.CIEMark;
 import com.ia.management.model.Student;
-import com.ia.management.repository.IAMarkRepository;
+import com.ia.management.repository.CIEMarkRepository;
 import com.ia.management.repository.AttendanceRepository;
 import com.ia.management.model.Attendance;
 import com.lowagie.text.*;
@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 public class ReportService {
 
     @Autowired
-    private IAMarkRepository markRepo;
+    private CIEMarkRepository markRepo;
 
     @Autowired
     private AttendanceRepository attendanceRepo;
@@ -37,22 +37,22 @@ public class ReportService {
 
             // Title
             Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 18);
-            Paragraph title = new Paragraph("Department IA Marks Report - " + department, titleFont);
+            Paragraph title = new Paragraph("Department CIE Marks Report - " + department, titleFont);
             title.setAlignment(Element.ALIGN_CENTER);
             document.add(title);
             document.add(new Paragraph("\n"));
 
             // Fetch Marks
-            List<IAMark> marks = markRepo.findBySubject_Department(department);
+            List<CIEMark> marks = markRepo.findBySubject_Department(department);
 
             // Group by Subject
-            Map<String, List<IAMark>> marksBySubject = marks.stream()
+            Map<String, List<CIEMark>> marksBySubject = marks.stream()
                     .filter(m -> m.getSubject() != null)
                     .collect(Collectors.groupingBy(m -> m.getSubject().getName()));
 
-            for (Map.Entry<String, List<IAMark>> entry : marksBySubject.entrySet()) {
+            for (Map.Entry<String, List<CIEMark>> entry : marksBySubject.entrySet()) {
                 String subjectName = entry.getKey();
-                List<IAMark> subjectMarks = entry.getValue();
+                List<CIEMark> subjectMarks = entry.getValue();
 
                 // Sort by RegNo
                 subjectMarks.sort((m1, m2) -> {
@@ -77,7 +77,7 @@ public class ReportService {
                 addHeader_cell(table, "Total");
 
                 int sl = 1;
-                for (IAMark mark : subjectMarks) {
+                for (CIEMark mark : subjectMarks) {
                     Student s = mark.getStudent();
                     table.addCell(String.valueOf(sl++));
                     table.addCell(s != null ? s.getRegNo() : "-");

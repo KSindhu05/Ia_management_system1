@@ -6,10 +6,8 @@ import {
     Edit, Save, LogOut, ShieldAlert, X, BookOpen, Layers, Megaphone, Calendar, MapPin, PenTool, Download
 } from 'lucide-react';
 import {
-    hodTrendData, hodGradeDistribution, atRiskStudents, facultyWorkload,
-    departments, subjectsByDept, getStudentsByDept, branchPerformanceData, iaSubmissionStatus,
-    englishMarks, mathsMarks, departmentAlerts, resourceRequests,
-    hodData, departmentStats, hodBranchComparison, facultySubjects, facultyProfiles
+    departments, subjectsByDept, getStudentsByDept, englishMarks, mathsMarks,
+    departmentStats, facultySubjects, facultyProfiles
 } from '../utils/mockData';
 import styles from './HODDashboard.module.css';
 import {
@@ -23,6 +21,18 @@ ChartJS.register(
     CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend,
     ArcElement, PointElement, LineElement, Filler
 );
+
+// Local fallbacks for removed mock data
+const hodTrendData = { labels: ['2022', '2023', '2024'], datasets: [{ label: 'Pass %', data: [75, 80, 85], borderColor: '#3b82f6', fill: false }] };
+const hodGradeDistribution = { labels: ['A', 'B', 'C', 'D', 'F'], datasets: [{ data: [20, 30, 25, 15, 10], backgroundColor: ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#6b7280'] }] };
+const atRiskStudents = [];
+const facultyWorkload = [];
+const branchPerformanceData = {};
+const iaSubmissionStatus = { labels: ['Submitted', 'Pending'], datasets: [{ data: [70, 30], backgroundColor: ['#22c55e', '#ef4444'] }] };
+const departmentAlerts = [];
+const resourceRequests = [];
+const hodData = {};
+const hodBranchComparison = {};
 
 const HODDashboard = () => {
     const [activeTab, setActiveTab] = useState('overview');

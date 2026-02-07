@@ -37,23 +37,7 @@ const Login = () => {
 
         try {
             const result = await login(userId, password);
-            // alert("Login result received: " + JSON.stringify(result));
-
-<<<<<<< HEAD
-        if (result.success) {
-            // Redirect based on role
-            const id = userId.toUpperCase();
-            if (id.startsWith('S') || id.startsWith('DIP')) navigate('/dashboard/student');
-            else if (id.startsWith('F') || id.startsWith('FAC')) navigate('/dashboard/faculty');
-            else if (id.startsWith('H') || id.startsWith('HOD')) navigate('/dashboard/hod');
-            else if (id.startsWith('P') || id === 'ADMIN' || id.startsWith('PRIN')) navigate('/dashboard/principal');
-        } else {
-            setError(result.message);
-=======
             if (result.success) {
-                // Alert 2: Success
-                // alert("Login successful! Redirecting...");
-
                 const role = result.role;
                 if (role === 'student') navigate('/dashboard/student');
                 else if (role === 'faculty') navigate('/dashboard/faculty');
@@ -61,15 +45,11 @@ const Login = () => {
                 else if (role === 'principal') navigate('/dashboard/principal');
                 else navigate('/');
             } else {
-                // Alert 3: Failure
-                console.error("Login failed:", result.message);
                 setError(result.message);
             }
         } catch (err) {
             console.error("Unexpected error in handleSubmit:", err);
             setError("Unexpected error: " + err.message);
-            alert("Unexpected error: " + err.message);
->>>>>>> ksindhu-sync
         }
     };
 
@@ -95,8 +75,8 @@ const Login = () => {
                     <div className={styles.logoWrapper}>
                         <img src={require('../assets/college_logo.png')} alt="College Logo" className={styles.leftLogo} />
                     </div>
-                    <h1>IA MANAGEMENT SYSTEM</h1>
-                    <p>Efficiently manage Internal Assessments and track academic progress</p>
+                    <h1>CIE MANAGEMENT SYSTEM</h1>
+                    <p>Efficiently manage Continuous Internal Evaluations and track academic progress</p>
                 </div>
             </div>
 
@@ -107,7 +87,7 @@ const Login = () => {
                         <div className={styles.logoContainer}>
                             <img src={require('../assets/college_logo.png')} alt="College Logo" className={styles.collegeLogo} />
                         </div>
-                        <h1 className={styles.collegeName}>IA Management System</h1>
+                        <h1 className={styles.collegeName}>CIE Management System</h1>
                         <p className={styles.subtitle}>Role Based Login Portal</p>
                     </div>
 

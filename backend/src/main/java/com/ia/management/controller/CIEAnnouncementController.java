@@ -1,30 +1,29 @@
 package com.ia.management.controller;
 
-import com.ia.management.model.IAnnouncement;
+import com.ia.management.model.CIEAnnouncement;
 import com.ia.management.model.Notification;
 import com.ia.management.model.Student;
 import com.ia.management.model.User;
 import com.ia.management.repository.StudentRepository;
 import com.ia.management.repository.SubjectRepository;
 import com.ia.management.repository.UserRepository;
-import com.ia.management.service.IAnnouncementService;
+import com.ia.management.service.CIEAnnouncementService;
 import com.ia.management.service.NotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/cie")
 @CrossOrigin(origins = "*")
-public class IAnnouncementController {
+public class CIEAnnouncementController {
 
     @Autowired
-    private IAnnouncementService announcementService;
+    private CIEAnnouncementService announcementService;
 
     @Autowired
     private NotificationService notificationService;
@@ -41,30 +40,40 @@ public class IAnnouncementController {
     // --- FACULTY ENDPOINTS ---
 
     @PostMapping("/faculty/announcements")
-    public ResponseEntity<IAnnouncement> createAnnouncement(
+    public ResponseEntity<CIEAnnouncement> createAnnouncement(
             @RequestParam Long subjectId,
-            @RequestBody IAnnouncement announcement,
+            @RequestBody CIEAnnouncement announcement,
             Authentication authentication) {
         return ResponseEntity
                 .ok(announcementService.createAnnouncement(subjectId, authentication.getName(), announcement));
     }
 
     @GetMapping("/faculty/announcements/details")
-    public ResponseEntity<IAnnouncement> getAnnouncementDetails(
+    public ResponseEntity<CIEAnnouncement> getAnnouncementDetails(
             @RequestParam Long subjectId,
             @RequestParam Integer cieNumber) {
         return ResponseEntity.ok(announcementService.getAnnouncementDetails(subjectId, cieNumber));
     }
 
     @GetMapping("/faculty/announcements")
-    public ResponseEntity<List<IAnnouncement>> getMyAnnouncements(Authentication authentication) {
+    public ResponseEntity<List<CIEAnnouncement>> getMyAnnouncements(Authentication authentication) {
         return ResponseEntity.ok(announcementService.getFacultyAnnouncements(authentication.getName()));
+    }
+
+    @GetMapping("/faculty/announcements/upcoming")
+    public ResponseEntity<CIEAnnouncement> getUpcomingAnnouncement(@RequestParam Long subjectId) {
+        CIEAnnouncement announcement = announcementService.getUpcomingAnnouncement(subjectId);
+        if (announcement != null) {
+            return ResponseEntity.ok(announcement);
+        } else {
+            return ResponseEntity.noContent().build();
+        }
     }
 
     // --- STUDENT ENDPOINTS ---
 
     @GetMapping("/student/announcements")
-    public ResponseEntity<List<IAnnouncement>> getStudentAnnouncements(Authentication authentication) {
+    public ResponseEntity<List<CIEAnnouncement>> getStudentAnnouncements(Authentication authentication) {
         // 1. Get Student Profile
         User user = userRepository.findByUsername(authentication.getName()).orElseThrow();
         Student student = studentRepository.findByRegNo(user.getAssociatedId()).orElseThrow();
@@ -75,17 +84,6 @@ public class IAnnouncementController {
                 .stream().map(s -> s.getId()).collect(Collectors.toList());
 
         // 3. Find Announcements
-        // Using Repository directly here or via Service if exposed
-        // For simplicity, let's add a helper in Service or Repostiory
-        // Actually Repository has: findBySubjectIdInAndScheduledDateAfter...
-        // Need to autowire Repository or expose method in Service.
-        // Let's expose in Service properly.
-
-        // Fix: Call Service method (need to update Service to accept subjectIds)
-        // Temporary hack: use direct repo call if service not updated, but better
-        // Update Service.
-        // I'll update the Service content below to include
-        // getStudentAnnouncementsBySubjects
         return ResponseEntity.ok(announcementService.getAnnouncementsForSubjects(subjectIds));
     }
 
@@ -103,7 +101,7 @@ public class IAnnouncementController {
     // --- HOD ENDPOINTS ---
 
     @GetMapping("/hod/announcements")
-    public ResponseEntity<List<IAnnouncement>> getDepartmentAnnouncements(Authentication authentication) {
+    public ResponseEntity<List<CIEAnnouncement>> getDepartmentAnnouncements(Authentication authentication) {
         User user = userRepository.findByUsername(authentication.getName()).orElseThrow();
         // HOD associatedId stores Department Name or Department field
         String department = user.getDepartment();
@@ -114,9 +112,9 @@ public class IAnnouncementController {
     }
 
     @PostMapping("/hod/announcements")
-    public ResponseEntity<IAnnouncement> createHODAnnouncement(
+    public ResponseEntity<CIEAnnouncement> createHODAnnouncement(
             @RequestParam Long subjectId,
-            @RequestBody IAnnouncement announcement,
+            @RequestBody CIEAnnouncement announcement,
             Authentication authentication) {
         return ResponseEntity
                 .ok(announcementService.createAnnouncement(subjectId, authentication.getName(), announcement));

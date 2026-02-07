@@ -2,10 +2,10 @@ import React, { memo } from 'react';
 import { Users, GraduationCap, TrendingUp, ShieldCheck, ArrowUpRight, Activity, BookOpen } from 'lucide-react';
 import { Doughnut, Line } from 'react-chartjs-2';
 import styles from '../../../pages/PrincipalDashboard.module.css';
-import { collegeStats, principalStats, academicTrends } from '../../../utils/mockData';
+// import { collegeStats, principalStats, academicTrends } from '../../../utils/mockData'; // Removed static mock imports
 import {
     PendingApprovalsWidget, FocusListWidget,
-    YearComparisonWidget, NotesWidget, FacultyPerformanceWidget, ScheduleWidget, ActionCenter, IAStatsWidget
+    YearComparisonWidget, NotesWidget, FacultyPerformanceWidget, ScheduleWidget, ActionCenter, CIEStatsWidget
 } from './Widgets';
 
 // Premium Hero Card Component
@@ -65,14 +65,14 @@ const HeroStatCard = ({ label, value, icon: Icon, color, trend, gradient, custom
     </div>
 );
 
-const OverviewSection = memo(({ barData }) => (
+const OverviewSection = memo(({ stats, chartData, branches, branchPerformance }) => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', animation: 'fadeIn 0.6s ease-out' }}>
 
         {/* --- HERO STATS (FLOWCHART: OVERVIEW PANEL) --- */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem' }}>
             <HeroStatCard
                 label="Total Students"
-                value={principalStats.totalStudents}
+                value={stats?.totalStudents || 0}
                 icon={Users}
                 color="#3b82f6"
                 trend="+5%"
@@ -80,7 +80,7 @@ const OverviewSection = memo(({ barData }) => (
             />
             <HeroStatCard
                 label="Total Faculty"
-                value="42"
+                value="42" // Placeholder until Faculty API is ready
                 icon={Users}
                 color="#8b5cf6"
                 trend="Stable"
@@ -88,18 +88,18 @@ const OverviewSection = memo(({ barData }) => (
             />
             <HeroStatCard
                 label="Departments"
-                value="5"
+                value={branches?.length || 0}
                 icon={BookOpen}
                 color="#f59e0b"
                 trend="Active"
                 gradient="linear-gradient(135deg, #fffbeb 0%, #ffffff 100%)"
             />
             <HeroStatCard
-                label="IA Status"
+                label="CIE Status"
                 icon={Activity}
                 color="#10b981"
                 gradient="linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%)"
-                customContent={<IAStatsWidget />}
+                customContent={<CIEStatsWidget />}
             />
         </div>
 
@@ -114,7 +114,7 @@ const OverviewSection = memo(({ barData }) => (
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1.4rem', color: '#1e293b', fontWeight: 700 }}>Department Performance</h3>
-                            <p style={{ margin: '0.5rem 0 0 0', color: '#64748b' }}>Average IA Scores Comparison</p>
+                            <p style={{ margin: '0.5rem 0 0 0', color: '#64748b' }}>Average CIE Scores Comparison</p>
                         </div>
                         <button className={styles.secondaryBtn} onClick={() => alert('Viewing Full Analysis')}>
                             View Details <ArrowUpRight size={16} />
@@ -122,10 +122,10 @@ const OverviewSection = memo(({ barData }) => (
                     </div>
 
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2.5rem', justifyContent: 'center', padding: '1rem 0' }}>
-                        {collegeStats.branches.map((dept, index) => {
-                            const score = collegeStats.branchPerformance[index];
-                            const color = barData.datasets[0].backgroundColor[index];
-                            const chartData = {
+                        {branches?.map((dept, index) => {
+                            const score = branchPerformance?.[index] || 0;
+                            const color = chartData?.datasets?.[0]?.backgroundColor?.[index] || '#cbd5e1';
+                            const doughnutData = {
                                 labels: ['Score', 'Note'],
                                 datasets: [{
                                     data: [score, 100 - score],
@@ -141,7 +141,7 @@ const OverviewSection = memo(({ barData }) => (
                                     onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
                                 >
                                     <div style={{ height: '130px', width: '130px', position: 'relative' }}>
-                                        <Doughnut data={chartData} options={{ maintainAspectRatio: false, cutout: '82%', plugins: { tooltip: { enabled: false }, legend: { display: false } } }} />
+                                        <Doughnut data={doughnutData} options={{ maintainAspectRatio: false, cutout: '82%', plugins: { tooltip: { enabled: false }, legend: { display: false } } }} />
                                         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
                                             <span style={{ fontWeight: '800', fontSize: '1.6rem', color: '#1e293b', lineHeight: 1 }}>{score}%</span>
                                         </div>
@@ -163,7 +163,7 @@ const OverviewSection = memo(({ barData }) => (
             {/* RIGHT COLUMN (Action Center & Approvals) */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 <ActionCenter />
-                {/* FLOWCHART: PENDING IA APPROVALS */}
+                {/* FLOWCHART: PENDING CIE APPROVALS */}
                 <PendingApprovalsWidget />
                 <FocusListWidget />
             </div>

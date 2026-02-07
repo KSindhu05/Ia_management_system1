@@ -1,9 +1,9 @@
 package com.ia.management.service;
 
-import com.ia.management.model.IAnnouncement;
+import com.ia.management.model.CIEAnnouncement;
 import com.ia.management.model.Subject;
 import com.ia.management.model.User;
-import com.ia.management.repository.IAnnouncementRepository;
+import com.ia.management.repository.CIEAnnouncementRepository;
 import com.ia.management.repository.SubjectRepository;
 import com.ia.management.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,11 +15,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-// Forced update to trigger recompile
-public class IAnnouncementService {
+public class CIEAnnouncementService {
 
     @Autowired
-    private IAnnouncementRepository iaRepository;
+    private CIEAnnouncementRepository cieRepository;
 
     @Autowired
     private NotificationService notificationService;
@@ -31,17 +30,22 @@ public class IAnnouncementService {
     private SubjectRepository subjectRepository;
 
     @Transactional
-    public IAnnouncement createAnnouncement(Long subjectId, String username, IAnnouncement announcement) {
+    public CIEAnnouncement createAnnouncement(Long subjectId, String username, CIEAnnouncement announcement) {
         User faculty = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         Subject subject = subjectRepository.findById(subjectId)
                 .orElseThrow(() -> new RuntimeException("Subject not found"));
 
         // Check if announcement already exists for this Subject + CIE
-        IAnnouncement existing = iaRepository.findBySubjectIdAndCieNumber(subjectId, announcement.getCieNumber())
+        CIEAnnouncement existing = cieRepository.findBySubjectIdAndCieNumber(subjectId, announcement.getCieNumber())
                 .orElse(null);
 
         if (existing != null) {
+            boolean syllabusChanged = (announcement.getSyllabusCoverage() != null
+                    && !announcement.getSyllabusCoverage().equals(existing.getSyllabusCoverage()))
+                    || (announcement.getInstructions() != null
+                            && !announcement.getInstructions().equals(existing.getInstructions()));
+
             // Update fields
             if (announcement.getScheduledDate() != null)
                 existing.setScheduledDate(announcement.getScheduledDate());
@@ -56,19 +60,19 @@ public class IAnnouncementService {
             if (announcement.getStartTime() != null)
                 existing.setStartTime(announcement.getStartTime());
 
-            // Ensure faculty link is maintained or updated?
-            // Usually HOD sets schedule, Faculty sets syllabus.
-            // If existing has faculty (HOD?), we might want to keep it or update to current
-            // faculty?
-            // Let's keep the original creator or current behavior.
-            // But we must update the updatedAt timestamp.
-            return iaRepository.save(existing);
+            CIEAnnouncement saved = cieRepository.save(existing);
+
+            if (syllabusChanged) {
+                notificationService.notifySyllabusUpdated(saved);
+            }
+
+            return saved;
         }
 
         announcement.setFaculty(faculty);
         announcement.setSubject(subject);
 
-        IAnnouncement saved = iaRepository.save(announcement);
+        CIEAnnouncement saved = cieRepository.save(announcement);
 
         // Broadcast notifications
         notificationService.notifyStudents(saved);
@@ -77,18 +81,18 @@ public class IAnnouncementService {
         return saved;
     }
 
-    public IAnnouncement getAnnouncementDetails(Long subjectId, Integer cieNumber) {
-        return iaRepository.findBySubjectIdAndCieNumber(subjectId, cieNumber)
+    public CIEAnnouncement getAnnouncementDetails(Long subjectId, Integer cieNumber) {
+        return cieRepository.findBySubjectIdAndCieNumber(subjectId, cieNumber)
                 .orElse(null);
     }
 
-    public List<IAnnouncement> getFacultyAnnouncements(String username) {
+    public List<CIEAnnouncement> getFacultyAnnouncements(String username) {
         User faculty = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        return iaRepository.findByFaculty(faculty);
+        return cieRepository.findByFaculty(faculty);
     }
 
-    public List<IAnnouncement> getStudentAnnouncements(String username) {
+    public List<CIEAnnouncement> getStudentAnnouncements(String username) {
         // Find student subjects
         // Simplified: Fetch based on Dept/Sem matching student
         // Real implementation should check enrollment
@@ -107,13 +111,19 @@ public class IAnnouncementService {
         return List.of();
     }
 
-    public List<IAnnouncement> getAnnouncementsForSubjects(List<Long> subjectIds) {
-        return iaRepository.findBySubject_IdInAndScheduledDateAfterOrderByScheduledDateAsc(subjectIds,
+    public List<CIEAnnouncement> getAnnouncementsForSubjects(List<Long> subjectIds) {
+        return cieRepository.findBySubject_IdInAndScheduledDateAfterOrderByScheduledDateAsc(subjectIds,
                 LocalDate.now().minusDays(1));
     }
 
-    public List<IAnnouncement> getDepartmentAnnouncements(String department) {
-        return iaRepository.findBySubject_DepartmentAndScheduledDateAfterOrderByScheduledDateAsc(department,
+    public List<CIEAnnouncement> getDepartmentAnnouncements(String department) {
+        return cieRepository.findBySubject_DepartmentAndScheduledDateAfterOrderByScheduledDateAsc(department,
                 LocalDate.now().minusDays(1));
+    }
+
+    public CIEAnnouncement getUpcomingAnnouncement(Long subjectId) {
+        // Return the first announcement scheduled for today or future
+        return cieRepository.findFirstBySubjectIdAndScheduledDateGreaterThanEqualOrderByScheduledDateAsc(subjectId,
+                LocalDate.now());
     }
 }

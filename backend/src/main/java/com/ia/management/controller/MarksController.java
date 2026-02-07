@@ -1,6 +1,6 @@
 package com.ia.management.controller;
 
-import com.ia.management.model.IAMark;
+import com.ia.management.model.CIEMark;
 import com.ia.management.model.Student;
 import com.ia.management.model.Subject;
 import com.ia.management.service.MarksService;
@@ -14,7 +14,6 @@ import com.ia.management.model.PendingApprovalDTO;
 
 @RestController
 @RequestMapping("/api/marks")
-
 public class MarksController {
 
     @Autowired
@@ -31,7 +30,7 @@ public class MarksController {
     }
 
     @GetMapping("/subject/{subjectId}")
-    public List<IAMark> getMarksForSubject(@PathVariable Long subjectId) {
+    public List<CIEMark> getMarksForSubject(@PathVariable Long subjectId) {
         return marksService.getMarksForSubject(subjectId);
     }
 
@@ -40,12 +39,14 @@ public class MarksController {
         try {
             Long studentId = Long.valueOf(payload.get("studentId").toString());
             Long subjectId = Long.valueOf(payload.get("subjectId").toString());
-            String iaType = (String) payload.get("iaType");
+            String cieType = (String) payload.get("cieType");
+            if (cieType == null)
+                cieType = (String) payload.get("iaType");
 
             Double co1 = payload.get("co1") != null ? Double.valueOf(payload.get("co1").toString()) : 0.0;
             Double co2 = payload.get("co2") != null ? Double.valueOf(payload.get("co2").toString()) : 0.0;
 
-            IAMark updated = marksService.updateMark(studentId, subjectId, iaType, co1, co2);
+            CIEMark updated = marksService.updateMark(studentId, subjectId, cieType, co1, co2);
             return ResponseEntity.ok(updated);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error updating mark: " + e.getMessage());
@@ -63,11 +64,14 @@ public class MarksController {
     }
 
     @PostMapping("/submit")
-    public ResponseEntity<?> submitMarks(@RequestParam Long subjectId, @RequestParam String iaType) {
+    public ResponseEntity<?> submitMarks(@RequestParam Long subjectId,
+            @RequestParam(value = "cieType", required = false) String cieType,
+            @RequestParam(value = "iaType", required = false) String iaType) {
         try {
+            String type = cieType != null ? cieType : iaType;
             org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder
                     .getContext().getAuthentication();
-            marksService.submitMarks(subjectId, iaType, auth.getName());
+            marksService.submitMarks(subjectId, type, auth.getName());
             return ResponseEntity.ok("Marks submitted successfully.");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error submitting marks: " + e.getMessage());
@@ -75,12 +79,15 @@ public class MarksController {
     }
 
     @PostMapping("/approve")
-    public ResponseEntity<?> approveMarks(@RequestParam Long subjectId, @RequestParam String iaType) {
+    public ResponseEntity<?> approveMarks(@RequestParam Long subjectId,
+            @RequestParam(value = "cieType", required = false) String cieType,
+            @RequestParam(value = "iaType", required = false) String iaType) {
         try {
+            String type = cieType != null ? cieType : iaType;
             org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder
                     .getContext().getAuthentication();
             // TODO: Verify HOD role if not done by SecurityConfig
-            marksService.approveMarks(subjectId, iaType, auth.getName());
+            marksService.approveMarks(subjectId, type, auth.getName());
             return ResponseEntity.ok("Marks approved successfully.");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error approving marks: " + e.getMessage());
@@ -88,11 +95,14 @@ public class MarksController {
     }
 
     @PostMapping("/reject")
-    public ResponseEntity<?> rejectMarks(@RequestParam Long subjectId, @RequestParam String iaType) {
+    public ResponseEntity<?> rejectMarks(@RequestParam Long subjectId,
+            @RequestParam(value = "cieType", required = false) String cieType,
+            @RequestParam(value = "iaType", required = false) String iaType) {
         try {
+            String type = cieType != null ? cieType : iaType;
             org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder
                     .getContext().getAuthentication();
-            marksService.rejectMarks(subjectId, iaType, auth.getName());
+            marksService.rejectMarks(subjectId, type, auth.getName());
             return ResponseEntity.ok("Marks rejected.");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error rejecting marks: " + e.getMessage());
@@ -111,7 +121,7 @@ public class MarksController {
                 return ResponseEntity.status(401).body("Unauthorized");
             }
 
-            List<IAMark> marks = marksService.getMyMarks(username);
+            List<CIEMark> marks = marksService.getMyMarks(username);
             return ResponseEntity.ok(marks);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error fetching marks: " + e.getMessage());

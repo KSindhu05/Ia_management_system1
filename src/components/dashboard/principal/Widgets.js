@@ -294,8 +294,8 @@ export const PendingApprovalsWidget = memo(() => {
     );
 });
 
-export const IAStatsWidget = memo(() => {
-    // Mock Data for IA Status
+export const CIEStatsWidget = memo(() => {
+    // Mock Data for CIE Status
     const data = {
         labels: ['Conducted', 'Pending', 'Graded'],
         datasets: [{

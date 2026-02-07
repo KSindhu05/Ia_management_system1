@@ -3,9 +3,11 @@ package com.ia.management.config;
 import com.ia.management.model.Student;
 import com.ia.management.model.Subject;
 import com.ia.management.model.User;
+import com.ia.management.model.CIEMark;
 import com.ia.management.repository.StudentRepository;
 import com.ia.management.repository.SubjectRepository;
 import com.ia.management.repository.UserRepository;
+import com.ia.management.repository.CIEMarkRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,7 +30,7 @@ public class DataInitializer implements CommandLineRunner {
     private UserRepository userRepository;
 
     @Autowired
-    private com.ia.management.repository.IAMarkRepository iaMarkRepository;
+    private CIEMarkRepository cieMarkRepository;
 
     @Autowired
     private PasswordEncoder encoder;
@@ -45,20 +47,34 @@ public class DataInitializer implements CommandLineRunner {
             subjectRepository.saveAll(Arrays.asList(maths, english, caeg, python));
         }
 
-        // Old dummy student seeding removed to avoid duplicates with real data below
-
         if (userRepository.findByUsername("principal").isEmpty()) {
             System.out.println("Seeding Users...");
 
             // Admin/Principal
-            User principal = new User(null, "principal", encoder.encode("password"), User.Role.PRINCIPAL, null);
+            User principal = new User();
+            principal.setUsername("principal");
+            principal.setPassword(encoder.encode("password"));
+            principal.setRole(User.Role.PRINCIPAL);
 
             // HOD
-            User hod = new User(null, "hod_cs", encoder.encode("password"), User.Role.HOD, "CS");
+            User hod = new User();
+            hod.setUsername("hod_cs");
+            hod.setPassword(encoder.encode("password"));
+            hod.setRole(User.Role.HOD);
+            hod.setDepartment("CS");
 
             // Faculty
-            User faculty1 = new User(null, "faculty_maths", encoder.encode("password"), User.Role.FACULTY, "MathsDept");
-            User faculty2 = new User(null, "faculty_cs", encoder.encode("password"), User.Role.FACULTY, "CSDept");
+            User faculty1 = new User();
+            faculty1.setUsername("faculty_maths");
+            faculty1.setPassword(encoder.encode("password"));
+            faculty1.setRole(User.Role.FACULTY);
+            faculty1.setDepartment("MathsDept");
+
+            User faculty2 = new User();
+            faculty2.setUsername("faculty_cs");
+            faculty2.setPassword(encoder.encode("password"));
+            faculty2.setRole(User.Role.FACULTY);
+            faculty2.setDepartment("CSDept");
 
             userRepository.saveAll(Arrays.asList(principal, hod, faculty1, faculty2));
 
@@ -82,104 +98,94 @@ public class DataInitializer implements CommandLineRunner {
             List<Student> students = new ArrayList<>();
             int count = 1;
             for (String name : studentNames) {
-                String regNo = String.format("459CS25%03d", count++);
+                try {
+                    // Generate RegNo: 459CS23001
+                    String regNo = String.format("459CS23%03d", count++);
 
-                // Create User
-                if (userRepository.findByUsername(regNo).isPresent()) {
-                    // User already exists, skip
-                    continue;
+                    // Create User if not exists
+                    if (userRepository.findByUsername(regNo).isPresent()) {
+                        continue;
+                    }
+
+                    User studentUser = new User();
+                    studentUser.setUsername(regNo);
+                    studentUser.setPassword(encoder.encode("123"));
+                    studentUser.setRole(User.Role.STUDENT);
+                    studentUser.setAssociatedId(regNo);
+
+                    // Check if Student Exists
+                    Student student = studentRepository.findByRegNo(regNo).orElse(null);
+
+                    if (student == null) {
+                        student = new Student();
+                        student.setName(name);
+                        student.setRegNo(regNo);
+                        student.setDepartment("CS");
+                        student.setSemester("2nd"); // Defaulting to 2nd semester as per subjects
+                        student.setSection("A");
+                    }
+
+                    student.setUser(studentUser);
+                    studentRepository.save(student);
+                    students.add(student);
+                } catch (Exception e) {
+                    System.err.println("Error creating student: " + name);
                 }
-
-                User studentUser = new User();
-                studentUser.setUsername(regNo);
-                studentUser.setPassword(encoder.encode("123")); // Password 123
-                studentUser.setRole(com.ia.management.model.User.Role.STUDENT);
-                studentUser.setAssociatedId(regNo);
-                // userRepository.save(studentUser); // cascading from student
-
-                // Check if Student Exists
-                Student student = studentRepository.findByRegNo(regNo).orElse(null);
-
-                if (student == null) {
-                    // Create New Student Profile
-                    student = new Student();
-                    student.setName(name);
-                    student.setRegNo(regNo);
-                    student.setDepartment("CS");
-                    student.setSemester("2nd");
-                }
-
-                // Link User (whether updated or new)
-                student.setUser(studentUser);
-                studentRepository.save(student);
-                students.add(student);
             }
+            System.out.println("Seeded " + students.size() + " real students.");
 
             // 5. Seed Marks
             List<Subject> subjects = subjectRepository.findAll();
             for (Student student : students) {
                 for (Subject subject : subjects) {
-
-                    // Logic based on User Request:
-                    // CIE-1, CIE-2 -> Theory
-                    // CIE-3, CIE-4 -> Skill Test (Lab)
-                    // CIE-5 -> Activity
-                    // All have Max 50.
-
-                    // We seed all 5 for completeness, or selective based on subject type?
-                    // User said "each semester have 5 CIE's", implies global.
-
                     // Seed CIE-1 from Image (Real Data)
                     if (student.getName().equals("A KAVITHA")) {
                         // Maths (25SC01T) - Image: CO1=19, CO2=1, Total=20
                         if (subject.getCode().equals("25SC01T")) {
-                            createSpecificMark(student, subject, com.ia.management.model.IAMark.IAType.CIE1, 20.0);
+                            createSpecificMark(student, subject, CIEMark.CIEType.CIE1, 20.0);
                         }
                         // English (25EG01T) - Image: CO1=15, CO2=NaN/0, Total=15.
                         else if (subject.getCode().equals("25EG01T")) {
-                            createSpecificMark(student, subject, com.ia.management.model.IAMark.IAType.CIE1, 15.0);
+                            createSpecificMark(student, subject, CIEMark.CIEType.CIE1, 15.0);
                         }
                         // CAEG (25ME02P) - Image: CO1=8, CO2=22, Total=30.
                         else if (subject.getCode().equals("25ME02P")) {
-                            createSpecificMark(student, subject, com.ia.management.model.IAMark.IAType.CIE1, 30.0);
+                            createSpecificMark(student, subject, CIEMark.CIEType.CIE1, 30.0);
                         }
                         // Python (25CS21P) - Image: CO1=10, CO2=0, Total=10.
                         else if (subject.getCode().equals("25CS21P")) {
-                            createSpecificMark(student, subject, com.ia.management.model.IAMark.IAType.CIE1, 10.0);
+                            createSpecificMark(student, subject, CIEMark.CIEType.CIE1, 10.0);
                         } else {
                             // Default random for other subjects
-                            createRandomMark(student, subject, com.ia.management.model.IAMark.IAType.CIE1);
+                            createRandomMark(student, subject, CIEMark.CIEType.CIE1);
                         }
-
-                        // CIE 2-5 are removed for now per user logic (or future implementation)
-
                     } else {
                         // Random marks for others - ONLY CIE-1 as per request
-                        createRandomMark(student, subject, com.ia.management.model.IAMark.IAType.CIE1);
+                        createRandomMark(student, subject, CIEMark.CIEType.CIE1);
                     }
                 }
             }
         }
     }
 
-    private void createSpecificMark(Student student, Subject subject, com.ia.management.model.IAMark.IAType type,
+    private void createSpecificMark(Student student, Subject subject, CIEMark.CIEType type,
             Double totalScore) {
-        com.ia.management.model.IAMark mark = new com.ia.management.model.IAMark();
+        CIEMark mark = new CIEMark();
         mark.setStudent(student);
         mark.setSubject(subject);
-        mark.setIaType(type);
+        mark.setCieType(type);
         mark.setTotalScore(totalScore); // Only Total Score
         mark.setAttendancePercentage(85);
-        iaMarkRepository.save(mark);
+        cieMarkRepository.save(mark);
     }
 
-    private void createRandomMark(Student student, Subject subject, com.ia.management.model.IAMark.IAType type) {
+    private void createRandomMark(Student student, Subject subject, CIEMark.CIEType type) {
         Double maxMarks = subject.getMaxMarks() != null ? subject.getMaxMarks().doubleValue() : 50.0;
 
-        com.ia.management.model.IAMark mark = new com.ia.management.model.IAMark();
+        CIEMark mark = new CIEMark();
         mark.setStudent(student);
         mark.setSubject(subject);
-        mark.setIaType(type);
+        mark.setCieType(type);
 
         // Generate random score
         double score = Math.round((Math.random() * maxMarks * 0.6 + maxMarks * 0.35) * 2) / 2.0;
@@ -189,6 +195,6 @@ public class DataInitializer implements CommandLineRunner {
         mark.setTotalScore(score);
         mark.setAttendancePercentage(75 + (int) (Math.random() * 25));
 
-        iaMarkRepository.save(mark);
+        cieMarkRepository.save(mark);
     }
 }

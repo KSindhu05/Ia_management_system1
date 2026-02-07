@@ -17,7 +17,7 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (username, password) => {
         // MOCK MODE - Set to true to work without backend
-        const USE_MOCK = true;
+        const USE_MOCK = false;
 
         if (USE_MOCK) {
             // Mock login for frontend development
@@ -62,8 +62,17 @@ export const AuthProvider = ({ children }) => {
 
             console.log("Response status:", response.status);
 
-            const data = await response.json();
-            console.log("Response data:", data);
+            console.log("Response status:", response.status);
+
+            let data;
+            try {
+                data = await response.json();
+                console.log("Response data:", data);
+            } catch (err) {
+                console.warn("Server returned non-JSON response:", err);
+                // If parsing fails, use a default object or handle as text if needed
+                data = { message: "Authentication failure (Server Error)" };
+            }
 
             if (response.ok) {
                 // Backend returns: { token, id, username, role }

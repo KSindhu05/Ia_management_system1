@@ -185,9 +185,9 @@ export const getStudentsByDept = (deptId) => {
                     // The user asked to "change the all date students", implying names/identities primarily.
                     // If marks are critical we would need OCR or raw text data.
                     // We will randomize reasonable scores.
-                    ia1: Math.floor(Math.random() * 16) + 15,
-                    ia2: Math.floor(Math.random() * 21) + 10,
-                    ia3: 0
+                    cie1: Math.floor(Math.random() * 16) + 15,
+                    cie2: Math.floor(Math.random() * 21) + 10,
+                    cie3: 0
                 },
                 attendance: Math.floor(Math.random() * 20) + 80, // 80-100%
             };
@@ -235,9 +235,9 @@ export const getStudentsByDept = (deptId) => {
             section: section,
             batch: batch,
             marks: {
-                ia1: Math.floor(Math.random() * 16) + 15, // 15-30 (Good marks)
-                ia2: Math.floor(Math.random() * 21) + 10, // 10-30 (Varied)
-                ia3: 0
+                cie1: Math.floor(Math.random() * 16) + 15, // 15-30 (Good marks)
+                cie2: Math.floor(Math.random() * 21) + 10, // 10-30 (Varied)
+                cie3: 0
             },
             attendance: Math.floor(Math.random() * 30) + 70, // 70-100%
         };
@@ -363,14 +363,14 @@ export const labSchedule = [
 ];
 
 export const recentActivities = [
-    { id: 1, text: 'IA-2 Marks uploaded for Software Engineering', time: '2 hours ago', type: 'upload' },
+    { id: 1, text: 'CIE-2 Marks uploaded for Software Engineering', time: '2 hours ago', type: 'upload' },
     { id: 2, text: 'Attendance low for Lab Session (Wed)', time: '1 day ago', type: 'alert' },
     { id: 3, text: 'Meeting scheduled with HOD', time: '2 days ago', type: 'info' }
 ];
 
 export const atRiskStudents = [
     { id: 'CS001', name: 'A KAVITHA', rollNo: '459CS25001', avgMarks: 12, attendance: 65, issue: 'Low Attendance' },
-    { id: 'CS002', name: 'ABHISHEKA', rollNo: '459CS25002', avgMarks: 9, attendance: 70, issue: 'Failed in IA-1' },
+    { id: 'CS002', name: 'ABHISHEKA', rollNo: '459CS25002', avgMarks: 9, attendance: 70, issue: 'Failed in CIE-1' },
     { id: 'CS003', name: 'ADARSH REDDY G', rollNo: '459CS25003', avgMarks: 11, attendance: 55, issue: 'Severe Risk' }
 ];
 
@@ -381,7 +381,7 @@ export const hodBranchComparison = {
     labels: ['CS', 'EC', 'ME', 'CV', 'EE'],
     datasets: [
         {
-            label: 'Avg IA Score',
+            label: 'Avg CIE Score',
             data: [75, 78, 72, 70, 74],
             backgroundColor: 'rgba(59, 130, 246, 0.5)',
         }
@@ -390,7 +390,7 @@ export const hodBranchComparison = {
 
 export const departmentAlerts = [
     { id: 1, message: 'Low attendance in 3rd Year', type: 'warning' },
-    { id: 2, message: 'IA-1 Marks submission pending for 2 subjects', type: 'error' }
+    { id: 2, message: 'CIE-1 Marks submission pending for 2 subjects', type: 'error' }
 ];
 
 export const resourceRequests = [
@@ -434,7 +434,7 @@ export const branchPerformanceData = {
     datasets: [{ label: 'Performance', data: [72, 78, 74], backgroundColor: '#8b5cf6' }]
 };
 
-export const iaSubmissionStatus = {
+export const cieSubmissionStatus = {
     labels: ['Submitted', 'Pending'],
     datasets: [{ data: [85, 15], backgroundColor: ['#10b981', '#ef4444'] }]
 };
@@ -458,7 +458,7 @@ export const principalStats = {
 
 export const broadcastMessages = [
     { id: 1, message: 'Faculty Meeting at 3 PM', target: 'All Faculty', date: 'Today, 10:00 AM' },
-    { id: 2, message: 'Submit IA-1 Marks by Friday', target: 'HODs', date: 'Yesterday' }
+    { id: 2, message: 'Submit CIE-1 Marks by Friday', target: 'HODs', date: 'Yesterday' }
 ];
 
 export const principalSchedule = [
@@ -485,7 +485,7 @@ export const academicTrends = {
     labels: ['2021', '2022', '2023', '2024', '2025'],
     datasets: [
         {
-            label: 'Average IA Score',
+            label: 'Average CIE Score',
             data: [68, 72, 74, 71, 78],
             borderColor: '#3b82f6',
             tension: 0.4
@@ -510,13 +510,13 @@ export const attendanceCorrelation = Array.from({ length: 50 }, (_, i) => ({
 
 export const aiInsights = [
     "⚠️ Anomaly Detected: 3rd Semester Mechanical attendance dropped by 12% compared to last week.",
-    "📈 Positive Trend: Computer Science Dept has achieved 100% IA-2 submission compliance.",
+    "📈 Positive Trend: Computer Science Dept has achieved 100% CIE-2 submission compliance.",
     "🤖 Prediction: Based on current trends, Civil Engineering pass rate is projected to increase by 5%.",
-    "🔔 Reminder: IA-3 for Electrical Engineering is scheduled to begin in 4 days."
+    "🔔 Reminder: CIE-3 for Electrical Engineering is scheduled to begin in 4 days."
 ];
 
 export const liveTickerData = [
-    { time: '10:45 AM', msg: 'Dr. Suresh uploaded IA-2 Marks for CS Dept' },
+    { time: '10:45 AM', msg: 'Dr. Suresh uploaded CIE-2 Marks for CS Dept' },
     { time: '11:00 AM', msg: 'Principal Approved: Holiday Circular for Dec 25th' },
     { time: '11:15 AM', msg: 'Attendance Report Generated: 92% College-wide presence' },
     { time: '11:30 AM', msg: 'System Alert: Server Maintenance Scheduled for Sunday' },
@@ -549,12 +549,12 @@ export const principalTimetables = [
 
 export const principalCirculars = [
     { id: 101, date: '2025-10-20', title: 'Holiday Declaration - Deepavali', target: 'All Staff & Students', status: 'Sent' },
-    { id: 102, date: '2025-10-18', title: 'IA-2 Marks Submission Deadline', target: 'Faculty Only', status: 'Sent' },
+    { id: 102, date: '2025-10-18', title: 'CIE-2 Marks Submission Deadline', target: 'Faculty Only', status: 'Sent' },
     { id: 103, date: '2025-10-15', title: 'Campus Recruitments - Infosys', target: 'Final Year Students', status: 'Sent' },
 ];
 
 export const principalReports = [
-    { id: 1, name: 'IA-1 Consolidated Marks Report', type: 'PDF', size: '2.4 MB', date: 'Oct 10, 2025' },
+    { id: 1, name: 'CIE-1 Consolidated Marks Report', type: 'PDF', size: '2.4 MB', date: 'Oct 10, 2025' },
     { id: 2, name: 'Monthly Attendance Report (Sept)', type: 'Excel', size: '1.1 MB', date: 'Oct 05, 2025' },
     { id: 3, name: 'Faculty Workload Analysis', type: 'PDF', size: '0.8 MB', date: 'Sept 20, 2025' },
 ];

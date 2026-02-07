@@ -15,7 +15,12 @@ public class FacultyController {
     private FacultyService facultyService;
 
     @GetMapping("/dashboard")
-    public FacultyDashboardData getDashboardData() {
-        return facultyService.getDashboardData();
+    public FacultyDashboardData getDashboardData(java.security.Principal principal) {
+        return facultyService.getDashboardData(principal.getName());
+    }
+
+    @GetMapping("/students")
+    public java.util.List<com.ia.management.model.Student> getStudents(java.security.Principal principal) {
+        return facultyService.getStudentsForFaculty(principal.getName());
     }
 }

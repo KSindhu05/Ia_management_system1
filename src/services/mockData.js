@@ -1,7 +1,7 @@
 // Mock Data for Frontend Development (No Backend Required)
 // Set USE_MOCK = true to use mock data, false to use real API
 
-export const USE_MOCK = true;
+export const USE_MOCK = false;
 
 // Mock Users
 export const mockUsers = {
@@ -53,7 +53,7 @@ export const mockMarks = [
 
 // Mock Notifications
 export const mockNotifications = [
-    { id: 1, title: 'CIE-1 Scheduled', message: 'Engineering Maths-II CIE-1 on Feb 15, 2026', type: 'IA_ANNOUNCEMENT', isRead: false, createdAt: '2026-02-06' },
+    { id: 1, title: 'CIE-1 Scheduled', message: 'Engineering Maths-II CIE-1 on Feb 15, 2026', type: 'CIE_ANNOUNCEMENT', isRead: false, createdAt: '2026-02-06' },
     { id: 2, title: 'Marks Published', message: 'Python CIE-1 marks are now available', type: 'MARKS_PUBLISHED', isRead: true, createdAt: '2026-02-05' }
 ];
 

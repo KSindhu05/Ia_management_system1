@@ -5,8 +5,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "ia_announcements")
-public class IAnnouncement {
+@Table(name = "cie_announcements")
+public class CIEAnnouncement {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

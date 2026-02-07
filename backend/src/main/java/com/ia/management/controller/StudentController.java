@@ -15,7 +15,7 @@ public class StudentController {
     private StudentService studentService;
 
     @GetMapping("/dashboard")
-    public StudentDashboardData getDashboardData() {
-        return studentService.getDashboardData();
+    public StudentDashboardData getDashboardData(java.security.Principal principal) {
+        return studentService.getDashboardData(principal.getName());
     }
 }

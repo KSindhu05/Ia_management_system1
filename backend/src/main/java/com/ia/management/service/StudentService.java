@@ -8,50 +8,56 @@ import java.util.Arrays;
 @Service
 public class StudentService {
 
-    public StudentDashboardData getDashboardData() {
-        // Mock Data mimicking the React frontend hardcoded data
+        @org.springframework.beans.factory.annotation.Autowired
+        private com.ia.management.repository.UserRepository userRepository;
 
-        var profile = StudentDashboardData.StudentProfile.builder()
-                .name("Rahul Sharma")
-                .rollNo("21CS045")
-                .branch("Computer Science")
-                .semester("5th")
-                .attendance(78)
-                .cgpa(8.2)
-                .build();
+        @org.springframework.beans.factory.annotation.Autowired
+        private com.ia.management.repository.StudentRepository studentRepository;
 
-        var marks = Arrays.asList(
-                StudentDashboardData.IAMark.builder().id(1).subject("Data Structures").code("CS301").ia1(22).ia2(20).ia3(23).avg(22).status("Excellent").build(),
-                StudentDashboardData.IAMark.builder().id(2).subject("DBMS").code("CS302").ia1(18).ia2(19).ia3(20).avg(19).status("Good").build(),
-                StudentDashboardData.IAMark.builder().id(3).subject("Operating Systems").code("CS303").ia1(15).ia2(17).ia3(18).avg(17).status("Good").build(),
-                StudentDashboardData.IAMark.builder().id(4).subject("Computer Networks").code("CS304").ia1(21).ia2(22).ia3(24).avg(22).status("Excellent").build(),
-                StudentDashboardData.IAMark.builder().id(5).subject("Web Technologies").code("CS305").ia1(12).ia2(14).ia3(16).avg(14).status("Needs Focus").build()
-        );
+        public StudentDashboardData getDashboardData(String username) {
+                // 1. Fetch User Profile
+                var user = userRepository.findByUsername(username)
+                                .orElseThrow(() -> new RuntimeException("Student not found"));
 
-        var exams = Arrays.asList(
-                StudentDashboardData.Exam.builder().id(1).exam("IA-5").subject("Software Engineering").date("15-Dec").time("10:00 AM").build(),
-                StudentDashboardData.Exam.builder().id(2).exam("IA-6").subject("Java Programming").date("22-Dec").time("02:00 PM").build(),
-                StudentDashboardData.Exam.builder().id(3).exam("IA-5").subject("Industrial Mgmt").date("24-Dec").time("10:00 AM").build()
-        );
+                // Assuming associatedId is the RegNo
+                var student = studentRepository.findByRegNo(user.getAssociatedId())
+                                .orElse(null);
 
-        var notifications = Arrays.asList(
-                StudentDashboardData.Notification.builder().id(1).message("New IA-5 Marks Uploaded for CAD").time("2 hrs ago").type("info").build(),
-                StudentDashboardData.Notification.builder().id(2).message("Parent Meeting Scheduled for 20th Dec").time("1 day ago").type("warning").build(),
-                StudentDashboardData.Notification.builder().id(3).message("IA-6 Submission Deadline Tomorrow").time("2 days ago").type("alert").build()
-        );
+                var profile = StudentDashboardData.StudentProfile.builder()
+                                .name(user.getFullName())
+                                .rollNo(user.getAssociatedId())
+                                .branch(student != null ? student.getDepartment() : "N/A")
+                                .semester(student != null ? student.getSemester() : "N/A")
+                                .attendance(78) // Mock for now
+                                .cgpa(8.2) // Mock for now
+                                .build();
 
-        var achievements = Arrays.asList(
-                StudentDashboardData.Achievement.builder().id(1).title("Top Performer").desc("Ranked #3 in class").icon("🏆").build(),
-                StudentDashboardData.Achievement.builder().id(2).title("Perfect Attendance").desc("This month").icon("⭐").build(),
-                StudentDashboardData.Achievement.builder().id(3).title("Skill Badge").desc("Python Certified").icon("🎯").build()
-        );
+                // 2. Marks - To be implemented with CIEMarkRepository
+                var marks = Arrays.asList(
+                                StudentDashboardData.CIEMark.builder().id(1).subject("Data Structures").code("CS301")
+                                                .cie1(0).cie2(0).cie3(0).avg(0).status("Pending").build());
 
-        return StudentDashboardData.builder()
-                .profile(profile)
-                .marks(marks)
-                .upcomingExams(exams)
-                .notifications(notifications)
-                .achievements(achievements)
-                .build();
-    }
+                // 3. Exams - To be implemented with CIEAnnouncementRepository
+                var exams = Arrays.asList(
+                                StudentDashboardData.Exam.builder().id(1).exam("No Upcoming Exams").subject("")
+                                                .date("-").time("-").build());
+
+                // 4. Notifications & Achievements - Mock for now
+                var notifications = Arrays.asList(
+                                StudentDashboardData.Notification.builder().id(1)
+                                                .message("Welcome to IA Management System").time("Just now")
+                                                .type("info").build());
+
+                var achievements = Arrays.asList(
+                                StudentDashboardData.Achievement.builder().id(1).title("Student").desc("Active")
+                                                .icon("🎓").build());
+
+                return StudentDashboardData.builder()
+                                .profile(profile)
+                                .marks(marks)
+                                .upcomingExams(exams)
+                                .notifications(notifications)
+                                .achievements(achievements)
+                                .build();
+        }
 }

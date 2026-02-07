@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
 import styles from './PrincipalDashboard.module.css';
 import {
@@ -17,27 +17,43 @@ import {
     ReportsSection, GrievancesSection
 } from '../components/dashboard/principal/SectionComponents';
 import {
-    collegeStats, attendanceCorrelation, getStudentsByDept
+    getStudentsByDept
 } from '../utils/mockData';
+import { fetchPrincipalDashboard } from '../services/api';
 
 const PrincipalDashboard = () => {
     const [activeTab, setActiveTab] = useState('overview');
+    const [dashboardData, setDashboardData] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     // Directory State
     const [selectedDept, setSelectedDept] = useState(null);
     const [deptStudents, setDeptStudents] = useState([]);
-    // Note: selectedStudentProfile state is now managed inside DirectorySection for lighter parent state, 
-    // or we can pass a dummy handler if we want to keep it lifted.
-    // However, the previous implementation had it here for the Modal.
-    // In our refactor, DirectorySection handles its own Modal. 
-    // but the `handleViewGrievance` modal is still here.
-
-    const [selectedStudentProfile, setSelectedStudentProfile] = useState(null); // Kept if needed, but DirectorySection has its own local logic now.
 
     // Interaction State
     const [toast, setToast] = useState({ show: false, msg: '', type: 'info' });
     const [activeModal, setActiveModal] = useState(null); // 'faculty', 'broadcast', 'grievance'
     const [selectedItem, setSelectedItem] = useState(null);
+
+    useEffect(() => {
+        const loadDashboardData = async () => {
+            try {
+                const data = await fetchPrincipalDashboard();
+                if (data) {
+                    setDashboardData(data);
+                }
+            } catch (error) {
+                console.error("Failed to load dashboard data", error);
+                showToast("Failed to load live data", "error");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (activeTab === 'overview') {
+            loadDashboardData();
+        }
+    }, [activeTab]);
 
     const showToast = useCallback((msg, type = 'success') => {
         setToast({ show: true, msg, type });
@@ -107,15 +123,18 @@ const PrincipalDashboard = () => {
     ], [activeTab]);
 
     /* Chart Configs and Helper Logic */
-    const barData = useMemo(() => ({
-        labels: collegeStats.branches,
-        datasets: [{
-            label: 'Avg CIE Performance (%)',
-            data: collegeStats.branchPerformance,
-            backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
-            borderRadius: 6
-        }]
-    }), []);
+    const barData = useMemo(() => {
+        if (!dashboardData) return null;
+        return {
+            labels: dashboardData.branches,
+            datasets: [{
+                label: 'Avg CIE Performance (%)',
+                data: dashboardData.branchPerformance,
+                backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
+                borderRadius: 6
+            }]
+        };
+    }, [dashboardData]);
 
     const handleDeptClick = useCallback((dept) => {
         setSelectedDept(dept);
@@ -157,7 +176,15 @@ const PrincipalDashboard = () => {
 
                 {/* Dynamic Content */}
                 <div className={styles.sectionVisible}>
-                    {activeTab === 'overview' && <OverviewSection barData={barData} />}
+                    {activeTab === 'overview' && (
+                        loading ? <div style={{ padding: '2rem', textAlign: 'center' }}>Loading Dashboard Data...</div> :
+                            <OverviewSection
+                                stats={dashboardData?.stats}
+                                chartData={barData}
+                                branches={dashboardData?.branches}
+                                branchPerformance={dashboardData?.branchPerformance}
+                            />
+                    )}
 
                     {activeTab === 'compliance' && <ComplianceSection />}
 
@@ -166,7 +193,7 @@ const PrincipalDashboard = () => {
                         deptStudents={deptStudents}
                         handleDeptClick={handleDeptClick}
                         setSelectedDept={setSelectedDept}
-                        setSelectedStudentProfile={setSelectedStudentProfile}
+                    // setSelectedStudentProfile={setSelectedStudentProfile}
                     />}
 
                     {activeTab === 'faculty' && <FacultyDirectorySection onAdd={handleAddFaculty} />}

@@ -40,16 +40,16 @@ const StudentProfileModal = ({ selectedStudentProfile, setSelectedStudentProfile
                     <div className={styles.glassCard} style={{ padding: '1rem' }}>
                         <h4 style={{ margin: '0 0 0.5rem', color: '#64748b', fontSize: '0.9rem' }}>Academic Performance</h4>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                            <span>IA-1</span>
-                            <span>{s.marks.ia1}/20</span>
+                            <span>CIE-1</span>
+                            <span>{s.marks.cie1}/20</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                            <span>IA-2</span>
-                            <span>{s.marks.ia2}/20</span>
+                            <span>CIE-2</span>
+                            <span>{s.marks.cie2}/20</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', color: '#0f172a', borderTop: '1px solid #e2e8f0', paddingTop: '0.5rem' }}>
                             <span>Total</span>
-                            <span>{s.marks.ia1 + s.marks.ia2}/40</span>
+                            <span>{s.marks.cie1 + s.marks.cie2}/40</span>
                         </div>
                     </div>
                     <div className={styles.glassCard} style={{ padding: '1rem' }}>
@@ -126,8 +126,8 @@ export const DirectorySection = memo(({ selectedDept, deptStudents, handleDeptCl
             section: section,
             attendance: Math.floor(Math.random() * 30) + 70,
             marks: {
-                ia1: Math.floor(Math.random() * 20),
-                ia2: Math.floor(Math.random() * 20)
+                cie1: Math.floor(Math.random() * 20),
+                cie2: Math.floor(Math.random() * 20)
             },
             feesStatus: Math.random() > 0.15 ? 'Paid' : 'Pending',
             mentoringStatus: Math.random() > 0.3 ? 'Done' : 'Pending',
@@ -148,7 +148,7 @@ export const DirectorySection = memo(({ selectedDept, deptStudents, handleDeptCl
 
         return baseList.filter(s => {
             const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) || s.rollNo.includes(searchQuery);
-            const isAtRisk = showAtRisk ? (s.attendance < 75 || ((s.marks.ia1 + s.marks.ia2) / 40) < 0.5) : true;
+            const isAtRisk = showAtRisk ? (s.attendance < 75 || ((s.marks.cie1 + s.marks.cie2) / 40) < 0.5) : true;
             return matchesSearch && isAtRisk;
         });
     }, [semester, section, deptStudents, randomStudents, searchQuery, showAtRisk]);
@@ -344,7 +344,7 @@ export const DirectorySection = memo(({ selectedDept, deptStudents, handleDeptCl
                             <th>Name</th>
                             <th>Sem</th>
                             <th>Attendance</th>
-                            <th>IA Performance</th>
+                            <th>CIE Performance</th>
                             <th>Fees Status</th>
                             <th>Mentoring</th>
                             <th>Actions</th>
@@ -377,12 +377,12 @@ export const DirectorySection = memo(({ selectedDept, deptStudents, handleDeptCl
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             <div style={{ width: '80px', height: '6px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
                                                 <div style={{
-                                                    width: `${(student.marks.ia1 + student.marks.ia2) / 40 * 100}%`,
+                                                    width: `${(student.marks.cie1 + student.marks.cie2) / 40 * 100}%`,
                                                     height: '100%',
-                                                    background: ((student.marks.ia1 + student.marks.ia2) / 40) >= 0.5 ? '#3b82f6' : '#f59e0b'
+                                                    background: ((student.marks.cie1 + student.marks.cie2) / 40) >= 0.5 ? '#3b82f6' : '#f59e0b'
                                                 }}></div>
                                             </div>
-                                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{Math.round((student.marks.ia1 + student.marks.ia2) / 40 * 100)}%</span>
+                                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{Math.round((student.marks.cie1 + student.marks.cie2) / 40 * 100)}%</span>
                                         </div>
                                     </td>
                                     <td>

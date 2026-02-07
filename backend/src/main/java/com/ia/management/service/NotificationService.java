@@ -33,7 +33,7 @@ public class NotificationService {
         notificationRepository.save(note);
     }
 
-    public void notifyStudents(IAnnouncement announcement) {
+    public void notifyStudents(CIEAnnouncement announcement) {
         Subject subject = announcement.getSubject();
         // Assuming announcement applies to all sections for now
         List<Student> students = studentRepository.findByDepartmentAndSemester(subject.getDepartment(),
@@ -43,7 +43,7 @@ public class NotificationService {
             if (student.getUser() != null) {
                 createNotification(
                         student.getUser(),
-                        "New IA Scheduled: " + subject.getName(),
+                        "New CIE Scheduled: " + subject.getName(),
                         "CIE-" + announcement.getCieNumber() + " scheduled on " + announcement.getScheduledDate(),
                         Notification.NotificationType.IA_ANNOUNCEMENT,
                         announcement.getId());
@@ -51,41 +51,62 @@ public class NotificationService {
         }
     }
 
-    public void notifyHOD(IAnnouncement announcement) {
+    public void notifyHOD(CIEAnnouncement announcement) {
         Subject subject = announcement.getSubject();
         notifyHODGeneric(subject.getDepartment(),
-                "New IA Scheduled: " + subject.getName(),
+                "New CIE Scheduled: " + subject.getName(),
                 "Faculty " + announcement.getFaculty().getUsername() + " scheduled CIE-"
                         + announcement.getCieNumber() + " on " + announcement.getScheduledDate(),
                 Notification.NotificationType.IA_ANNOUNCEMENT,
                 announcement.getId());
     }
 
-    public void notifyHODMarksSubmitted(Subject subject, String iaType, String facultyName) {
+    public void notifySyllabusUpdated(CIEAnnouncement announcement) {
+        Subject subject = announcement.getSubject();
+        String title = "Syllabus Updated: " + subject.getName();
+        String message = "Syllabus for CIE-" + announcement.getCieNumber() + " has been updated: "
+                + announcement.getSyllabusCoverage();
+
+        // Notify Students
+        List<Student> students = studentRepository.findByDepartmentAndSemester(subject.getDepartment(),
+                subject.getSemester());
+        for (Student student : students) {
+            if (student.getUser() != null) {
+                createNotification(student.getUser(), title, message, Notification.NotificationType.IA_SYLLABUS_UPDATE,
+                        announcement.getId());
+            }
+        }
+
+        // Notify HOD
+        notifyHODGeneric(subject.getDepartment(), title, message, Notification.NotificationType.IA_SYLLABUS_UPDATE,
+                announcement.getId());
+    }
+
+    public void notifyHODMarksSubmitted(Subject subject, String cieType, String facultyName) {
         notifyHODGeneric(subject.getDepartment(),
                 "Marks Submitted: " + subject.getName(),
-                "Faculty " + facultyName + " has submitted " + iaType + " marks for approval.",
+                "Faculty " + facultyName + " has submitted " + cieType + " marks for approval.",
                 Notification.NotificationType.MARKS_SUBMITTED,
                 subject.getId());
     }
 
-    public void notifyFacultyMarksApproved(Subject subject, String iaType, String facultyUsername) {
+    public void notifyFacultyMarksApproved(Subject subject, String cieType, String facultyUsername) {
         User faculty = userRepository.findByUsername(facultyUsername).orElse(null);
         if (faculty != null) {
             createNotification(faculty,
                     "Marks Approved: " + subject.getName(),
-                    "Your " + iaType + " marks have been approved by HOD.",
+                    "Your " + cieType + " marks have been approved by HOD.",
                     Notification.NotificationType.MARKS_APPROVED,
                     subject.getId());
         }
     }
 
-    public void notifyFacultyMarksRejected(Subject subject, String iaType, String facultyUsername) {
+    public void notifyFacultyMarksRejected(Subject subject, String cieType, String facultyUsername) {
         User faculty = userRepository.findByUsername(facultyUsername).orElse(null);
         if (faculty != null) {
             createNotification(faculty,
                     "Marks Rejected: " + subject.getName(),
-                    "Your " + iaType + " marks were rejected. Please review and resubmit.",
+                    "Your " + cieType + " marks were rejected. Please review and resubmit.",
                     Notification.NotificationType.MARKS_REJECTED,
                     subject.getId());
         }
@@ -113,6 +134,26 @@ public class NotificationService {
         if (n != null) {
             n.setIsRead(true);
             notificationRepository.save(n);
+        }
+    }
+
+    public void createBroadcast(String department, String message, User sender) {
+        List<User> users = userRepository.findAll(); // Optimization: filter by department if User entity has it
+        for (User user : users) {
+             // Logic to filter by department. Currently User model might not have strict department field or it's 'associatedId'
+             // Assuming we want to broadcast to FACULTY and STUDENTS of that department
+             // For now, simple implementation:
+             
+             boolean shouldNotify = false;
+             if(user.getRole() == User.Role.FACULTY || user.getRole() == User.Role.STUDENT) {
+                 // Check department match if possible, or just broadcast to all for now as 'General'
+                 // Ideally we need user.getDepartment()
+                 shouldNotify = true; 
+             }
+             
+             if(shouldNotify && !user.getId().equals(sender.getId())) {
+                 createNotification(user, "Announcement from HOD", message, Notification.NotificationType.BROADCAST, null);
+             }
         }
     }
 }

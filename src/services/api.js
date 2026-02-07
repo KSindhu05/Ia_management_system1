@@ -37,3 +37,14 @@ export const fetchHODDashboard = async () => {
         return null;
     }
 };
+
+export const fetchPrincipalDashboard = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/principal/dashboard`);
+        if (!response.ok) throw new Error('Failed to fetch data');
+        return await response.json();
+    } catch (error) {
+        console.error('Fetch dashboard error:', error);
+        return null;
+    }
+};

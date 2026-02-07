@@ -12,7 +12,7 @@ public class HODService {
         private com.ia.management.repository.UserRepository userRepository;
 
         @org.springframework.beans.factory.annotation.Autowired
-        private com.ia.management.repository.IAnnouncementRepository announcementRepository;
+        private com.ia.management.repository.CIEAnnouncementRepository announcementRepository;
 
         @org.springframework.beans.factory.annotation.Autowired
         private org.springframework.security.crypto.password.PasswordEncoder encoder;
@@ -86,8 +86,8 @@ public class HODService {
                                 .findByDepartmentAndRole(department, com.ia.management.model.User.Role.FACULTY);
 
                 return facultyList.stream().map(faculty -> {
-                        // Derive subjects from IAnnouncement history
-                        java.util.List<com.ia.management.model.IAnnouncement> announcements = announcementRepository
+                        // Derive subjects from CIEAnnouncement history
+                        java.util.List<com.ia.management.model.CIEAnnouncement> announcements = announcementRepository
                                         .findByFaculty(faculty);
                         java.util.List<String> subjects = announcements.stream()
                                         .map(a -> a.getSubject().getName())

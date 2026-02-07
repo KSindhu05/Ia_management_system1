@@ -8,39 +8,74 @@ import java.util.Arrays;
 @Service
 public class FacultyService {
 
-    public FacultyDashboardData getDashboardData() {
-        var profile = FacultyDashboardData.FacultyProfile.builder()
-                .name("Prof. Anjali Desai")
-                .designation("Senior Lecturer")
-                .department("Computer Science")
-                .build();
+        @org.springframework.beans.factory.annotation.Autowired
+        private com.ia.management.repository.UserRepository userRepository;
 
-        var subjects = Arrays.asList(
-                FacultyDashboardData.Subject.builder().id(1).name("Data Structures").semester("3rd").studentCount(60).build(),
-                FacultyDashboardData.Subject.builder().id(2).name("DBMS").semester("4th").studentCount(58).build(),
-                FacultyDashboardData.Subject.builder().id(3).name("Java Programming").semester("5th").studentCount(62).build()
-        );
+        @org.springframework.beans.factory.annotation.Autowired
+        private com.ia.management.repository.SubjectRepository subjectRepository;
 
-        var analytics = FacultyDashboardData.ClassAnalytics.builder()
-                .totalStudents(180)
-                .evaluated(140)
-                .pending(40)
-                .avgScore(78)
-                .lowPerformers(12)
-                .topPerformers(45)
-                .build();
+        @org.springframework.beans.factory.annotation.Autowired
+        private com.ia.management.repository.StudentRepository studentRepository;
 
-        var schedule = Arrays.asList(
-                FacultyDashboardData.LabSchedule.builder().id(1).day("Mon").time("10:00 AM").lab("Lab 1 (DS)").batch("B1").build(),
-                FacultyDashboardData.LabSchedule.builder().id(2).day("Tue").time("02:00 PM").lab("Lab 2 (DBMS)").batch("B2").build(),
-                FacultyDashboardData.LabSchedule.builder().id(3).day("Thu").time("11:00 AM").lab("Lab 3 (Java)").batch("B3").build()
-        );
+        public FacultyDashboardData getDashboardData(String username) {
+                // 1. Fetch User Profile
+                var user = userRepository.findByUsername(username)
+                                .orElseThrow(() -> new RuntimeException("Faculty not found"));
 
-        return FacultyDashboardData.builder()
-                .profile(profile)
-                .subjects(subjects)
-                .analytics(analytics)
-                .labSchedule(schedule)
-                .build();
-    }
+                var profile = FacultyDashboardData.FacultyProfile.builder()
+                                .name(user.getFullName() != null ? user.getFullName() : user.getUsername())
+                                .designation("Faculty") // Default or add to User model
+                                .department(user.getDepartment())
+                                .build();
+
+                // 2. Fetch Subjects linked to this Department
+                // Ideally we should have a mapping of Faculty -> Subjects, but for now using
+                // Dept
+                var subjectsEntities = subjectRepository.findByDepartment(user.getDepartment());
+                var subjects = subjectsEntities.stream().map(s -> {
+                        // Count students in this semester/dept
+                        int count = studentRepository.findByDepartmentAndSemester(s.getDepartment(), s.getSemester())
+                                        .size();
+                        return FacultyDashboardData.Subject.builder()
+                                        .id(s.getId().intValue())
+                                        .name(s.getName())
+                                        .semester(s.getSemester())
+                                        .studentCount(count)
+                                        .build();
+                }).collect(java.util.stream.Collectors.toList());
+
+                // 3. Analytics (Simplified calculation)
+                // For now, mocking analytics logic based on student count, to be expanded with
+                // CIEMarkRepo
+                int totalStudents = subjects.stream().mapToInt(FacultyDashboardData.Subject::getStudentCount).sum();
+
+                var analytics = FacultyDashboardData.ClassAnalytics.builder()
+                                .totalStudents(totalStudents)
+                                .evaluated(0) // Pending implementation with CIEMarkRepository
+                                .pending(totalStudents)
+                                .avgScore(0)
+                                .lowPerformers(0)
+                                .topPerformers(0)
+                                .build();
+
+                // 4. Lab Schedule (Keep Mock or Empty for now as no entity exists)
+                var schedule = Arrays.asList(
+                                FacultyDashboardData.LabSchedule.builder().id(1).day("Mon").time("10:00 AM")
+                                                .lab("Lab 1").batch("B1").build());
+
+                return FacultyDashboardData.builder()
+                                .profile(profile)
+                                .subjects(subjects)
+                                .analytics(analytics)
+                                .labSchedule(schedule)
+                                .build();
+        }
+
+        public java.util.List<com.ia.management.model.Student> getStudentsForFaculty(String username) {
+                var user = userRepository.findByUsername(username)
+                                .orElseThrow(() -> new RuntimeException("Faculty not found"));
+
+                // Fetch students in the same department
+                return studentRepository.findByDepartment(user.getDepartment());
+        }
 }

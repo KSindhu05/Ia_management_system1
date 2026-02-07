@@ -359,22 +359,6 @@ const FacultyDashboard = () => {
             onClick: () => { setActiveSection('My Students'); setSelectedSubject(null); }
         },
         {
-            label: 'Attendance',
-            path: '/dashboard/faculty',
-            icon: <UserCheck size={20} />,
-            isActive: activeSection === 'Attendance',
-            onClick: () => { setActiveSection('Attendance'); setSelectedSubject(null); }
-        },
-
-        {
-            label: 'Lesson Plan',
-            path: '/dashboard/faculty',
-            icon: <BookOpen size={20} />,
-            isActive: activeSection === 'Lesson Plan',
-            onClick: () => { setActiveSection('Lesson Plan'); setSelectedSubject(null); }
-        },
-
-        {
             label: 'CIE Entry',
             path: '/dashboard/faculty',
             icon: <FilePlus size={20} />,

@@ -1,8 +1,8 @@
 package com.ia.management.service;
 
-import com.ia.management.model.IAMark;
+import com.ia.management.model.CIEMark;
 import com.ia.management.model.Student;
-import com.ia.management.repository.IAMarkRepository;
+import com.ia.management.repository.CIEMarkRepository;
 import com.ia.management.repository.AttendanceRepository;
 import com.ia.management.model.Attendance;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,13 +19,13 @@ import java.util.stream.Collectors;
 public class AnalyticsService {
 
         @Autowired
-        private IAMarkRepository markRepo;
+        private CIEMarkRepository markRepo;
 
         @Autowired
         private AttendanceRepository attendanceRepo;
 
         public Map<String, Object> getDepartmentStats(String dept) {
-                List<IAMark> marks = markRepo.findBySubject_Department(dept);
+                List<CIEMark> marks = markRepo.findBySubject_Department(dept);
 
                 // Compute Average Mark
                 double avg = marks.stream()
@@ -44,7 +44,7 @@ public class AnalyticsService {
                 Map<Student, Double> studentAvg = marks.stream()
                                 .filter(m -> m.getStudent() != null)
                                 .collect(Collectors.groupingBy(
-                                                IAMark::getStudent,
+                                                CIEMark::getStudent,
                                                 Collectors.averagingDouble(
                                                                 m -> m.getTotalScore() != null ? m.getTotalScore()
                                                                                 : 0.0)));
