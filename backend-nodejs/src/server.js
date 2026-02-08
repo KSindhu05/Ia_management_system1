@@ -13,6 +13,9 @@ const hodRoutes = require('./routes/hod');
 const principalRoutes = require('./routes/principal');
 const analyticsRoutes = require('./routes/analytics');
 const cieRoutes = require('./routes/cie');
+const attendanceRoutes = require('./routes/attendance');
+const notificationsRoutes = require('./routes/notifications');
+const resourcesRoutes = require('./routes/resources');
 
 const app = express();
 
@@ -32,6 +35,9 @@ app.use('/api/hod', hodRoutes);
 app.use('/api/principal', principalRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/cie', cieRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/notifications', notificationsRoutes);
+app.use('/api/resources', resourcesRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

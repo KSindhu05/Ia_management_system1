@@ -22,6 +22,14 @@ const Subject = sequelize.define('Subject', {
     },
     credits: {
         type: DataTypes.INTEGER
+    },
+    instructorId: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    instructorName: {
+        type: DataTypes.STRING,
+        allowNull: true
     }
 }, {
     tableName: 'subjects',

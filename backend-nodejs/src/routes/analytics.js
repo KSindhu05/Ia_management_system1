@@ -61,4 +61,24 @@ router.get('/department/:dept/stats', authMiddleware, async (req, res) => {
     }
 });
 
+// Get department performance summary (mock/calculated)
+router.get('/department/:dept', authMiddleware, async (req, res) => {
+    try {
+        const { dept } = req.params;
+        // This endpoint seems to be a duplicate or slightly different view of stats.
+        // For now, redirecting to stats logic or providing a simple success response
+        // to prevent 404 errors until specific requirements are clarified.
+        // HODDashboard calls this.
+
+        res.json({
+            department: dept,
+            status: 'active',
+            message: 'Department analytics ready'
+        });
+    } catch (error) {
+        console.error('Department info error:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
 module.exports = router;

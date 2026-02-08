@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
-import { LayoutDashboard, FileText, Calendar, Book, User, Download, Bell, TrendingUp, Award, Clock, CheckCircle, Mail, MapPin, ChevronDown, BookOpen } from 'lucide-react';
+import API_BASE_URL from '../config/api';
+import { LayoutDashboard, FileText, Calendar, Book, User, Download, Bell, TrendingUp, Award, Clock, CheckCircle, Mail, MapPin, ChevronDown, BookOpen, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import styles from './StudentDashboard.module.css';
 
@@ -30,6 +31,7 @@ const StudentDashboard = () => {
     // CIE & Notification State
     const [upcomingExams, setUpcomingExams] = useState([]);
     const [notifications, setNotifications] = useState([]);
+    const [unreadCount, setUnreadCount] = useState(0);
     const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
 
     // Student Profile State
@@ -48,7 +50,7 @@ const StudentDashboard = () => {
                 // Return if no user/token
                 if (!user || !user.token) return;
 
-                const response = await fetch('http://127.0.0.1:8083/api/marks/my-marks', {
+                const response = await fetch(`${API_BASE_URL}/marks/my-marks`, {
                     headers: {
                         'Authorization': `Bearer ${user.token}`
                     }
@@ -163,7 +165,7 @@ const StudentDashboard = () => {
 
             try {
                 // Announcements
-                const annRes = await fetch('http://127.0.0.1:8083/api/cie/student/announcements', {
+                const annRes = await fetch(`${API_BASE_URL}/cie/student/announcements`, {
                     headers: { 'Authorization': `Bearer ${user.token}` }
                 });
                 if (annRes.ok) {
@@ -181,24 +183,33 @@ const StudentDashboard = () => {
                 }
 
                 // Notifications
-                const notifRes = await fetch('http://127.0.0.1:8083/api/cie/student/notifications', {
-                    headers: { 'Authorization': `Bearer ${user.token}` }
-                });
-                if (notifRes.ok) {
-                    const notifs = await notifRes.json();
-                    setNotifications(notifs.map(n => ({
-                        id: n.id,
-                        message: n.message,
-                        time: new Date(n.createdAt).toLocaleDateString(), // Format nicer
-                        type: n.type === 'CIE_ANNOUNCEMENT' ? 'info' : 'alert',
-                        isRead: n.isRead
-                    })));
-                } else {
-                    // Fallback to mock notifications if API fails or empty
+                try {
+                    const notifRes = await fetch(`${API_BASE_URL}/cie/student/notifications`, {
+                        headers: { 'Authorization': `Bearer ${user.token}` }
+                    });
+                    if (notifRes.ok) {
+                        const notifs = await notifRes.json();
+                        setNotifications(notifs.map(n => ({
+                            id: n.id,
+                            message: n.message,
+                            time: new Date(n.createdAt).toLocaleDateString(), // Format nicer
+                            type: n.type === 'CIE_ANNOUNCEMENT' ? 'info' : 'alert',
+                            isRead: n.isRead
+                        })));
+                    } else {
+                        // Fallback to mock notifications if API fails or empty
+                        setNotifications([
+                            { id: 1, message: 'Welcome to the new CIE System!', time: 'Just now', type: 'info', isRead: false }
+                        ]);
+                    }
+                } catch (notifError) {
+                    console.error("Error fetching notifications:", notifError);
                     setNotifications([
                         { id: 1, message: 'Welcome to the new CIE System!', time: 'Just now', type: 'info', isRead: false }
                     ]);
                 }
+                // Calculate unread count
+                setUnreadCount(notifications.filter(n => !n.isRead).length);
             } catch (e) {
                 console.error("Error fetching updates:", e);
             } finally {
@@ -734,6 +745,8 @@ const StudentDashboard = () => {
                         {activeSection === 'Overview' ? `Welcome, ${studentInfo.name} 👋` : activeSection}
                     </h1>
                     <p className={styles.subtitle}>{studentInfo.branch} | Semester: {studentInfo.semester} | Reg No: {studentInfo.rollNo}</p>
+                </div>
+                <div className={styles.headerRight}>
                 </div>
             </header>
 

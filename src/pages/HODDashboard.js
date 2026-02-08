@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import API_BASE_URL from '../config/api';
 import DashboardLayout from '../components/DashboardLayout';
 import {
     LayoutDashboard, Users, FileText, CheckCircle, TrendingUp, BarChart2,
@@ -51,6 +52,7 @@ const HODDashboard = () => {
     const [students, setStudents] = useState([]);
     const [subjectMarks, setSubjectMarks] = useState({});
     const [analytics, setAnalytics] = useState(null);
+    const [subjectMarksData, setSubjectMarksData] = useState({});
 
     // Announcement State
     const [departmentAnnouncements, setDepartmentAnnouncements] = useState([]);
@@ -67,6 +69,10 @@ const HODDashboard = () => {
     const [approvalLoading, setApprovalLoading] = useState(false);
     const [expandedApprovals, setExpandedApprovals] = useState({});
 
+    // Notification State
+    const [notifications, setNotifications] = useState([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+
     const toggleExpansion = (index) => {
         setExpandedApprovals(prev => ({
             ...prev,
@@ -82,9 +88,10 @@ const HODDashboard = () => {
         { label: 'Faculty Management', path: '#faculty', icon: <Users size={20} />, active: activeTab === 'faculty', onClick: () => setActiveTab('faculty') },
         { label: 'IA Approval Panel', path: '#approvals', icon: <CheckCircle size={20} />, active: activeTab === 'approvals', onClick: () => setActiveTab('approvals') },
         { label: 'Update Marks', path: '#marks', icon: <PenTool size={20} />, active: activeTab === 'update-marks', onClick: () => setActiveTab('update-marks') },
+        { label: 'Notifications', path: '#notifications', icon: <Bell size={20} />, active: activeTab === 'notifications', onClick: () => setActiveTab('notifications') },
     ];
 
-    const API_BASE = 'http://127.0.0.1:8083/api/marks';
+    const API_BASE = `${API_BASE_URL}/marks`;
 
     const handleAddFaculty = async (e) => {
         e.preventDefault();
@@ -97,7 +104,7 @@ const HODDashboard = () => {
             const headers = { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
             const baseUrl = API_BASE.replace('/marks', '/hod');
 
-            const response = await fetch(`${baseUrl}/faculty`, {
+            const response = await fetch(`${API_BASE_URL}/hod/faculty`, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify(data)
@@ -124,7 +131,7 @@ const HODDashboard = () => {
                     const token = user?.token;
                     const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
                     const baseUrl = API_BASE.replace('/marks', '/hod');
-                    const response = await fetch(`${baseUrl}/faculty?department=${selectedDept}`, { headers });
+                    const response = await fetch(`${API_BASE_URL}/hod/faculty?department=${selectedDept}`, { headers });
                     if (response.ok) {
                         const data = await response.json();
                         setFacultyList(data);
@@ -136,6 +143,55 @@ const HODDashboard = () => {
             fetchFaculty();
         }
     }, [activeTab, isMyDept, selectedDept]);
+
+    // Fetch Subject Marks Data for IA Monitoring
+    useEffect(() => {
+        if (activeTab === 'monitoring' && isMyDept && subjects.length > 0 && deptStudents.length > 0) {
+            const fetchSubjectMarks = async () => {
+                try {
+                    const token = user?.token;
+                    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+                    const marksDataBySubject = {};
+
+                    for (const subject of subjects) {
+                        try {
+                            const response = await fetch(`${API_BASE_URL}/marks/subject/${subject.id}`, { headers });
+                            if (response.ok) {
+                                const marksData = await response.json();
+                                marksDataBySubject[subject.name] = marksData;
+                            }
+                        } catch (e) {
+                            console.error(`Failed to fetch marks for ${subject.name}`, e);
+                        }
+                    }
+                    setSubjectMarksData(marksDataBySubject);
+                } catch (e) {
+                    console.error("Failed to fetch subject marks", e);
+                }
+            };
+            fetchSubjectMarks();
+        }
+    }, [activeTab, isMyDept, subjects, deptStudents]);
+
+    // Fetch Notifications
+    useEffect(() => {
+        const fetchNotifications = async () => {
+            try {
+                const token = user?.token;
+                if (!token) return;
+                const headers = { 'Authorization': `Bearer ${token}` };
+                const response = await fetch(`${API_BASE_URL}/api/cie/hod/notifications`, { headers });
+                if (response.ok) {
+                    const data = await response.json();
+                    setNotifications(data);
+                    setUnreadCount(data.filter(n => !n.isRead).length);
+                }
+            } catch (e) {
+                console.error("Failed to fetch notifications", e);
+            }
+        };
+        fetchNotifications();
+    }, [user]);
 
     // Fetch pending approvals when tab is active
     useEffect(() => {
@@ -193,7 +249,7 @@ const HODDashboard = () => {
                 try {
                     const token = user?.token;
                     const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-                    const res = await fetch(`http://127.0.0.1:8083/api/analytics/department/${selectedDept}/stats`, { headers });
+                    const res = await fetch(`${API_BASE_URL}/analytics/department/${selectedDept}/stats`, { headers });
                     if (res.ok) { setAnalytics(await res.json()); }
                 } catch (e) { console.error("Failed to fetch analytics", e); }
             };
@@ -224,7 +280,9 @@ const HODDashboard = () => {
         if (isMyDept && selectedDept === 'CS') {
             const fetchAnnouncements = async () => {
                 try {
-                    const response = await fetch('http://127.0.0.1:8083/api/announcements/hod/announcements', { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') } });
+                    const token = user?.token;
+                    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+                    const response = await fetch(`${API_BASE_URL}/cie/hod/announcements`, { headers });
                     if (response.ok) { setDepartmentAnnouncements(await response.json()); }
                     else {
                         setDepartmentAnnouncements([{ id: 1, cieNumber: '1', scheduledDate: '2025-03-10', subject: { name: 'Python', code: '20CS31' }, faculty: { username: 'Wahida Banu' }, status: 'SCHEDULED' }]);
@@ -246,7 +304,7 @@ const HODDashboard = () => {
             const headers = { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
             const baseUrl = API_BASE.replace('/marks', '/hod');
 
-            const response = await fetch(`${baseUrl}/announcements?subjectId=${data.subjectId}`, {
+            const response = await fetch(`${API_BASE_URL}/cie/announcements?subjectId=${data.subjectId}`, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify(data)
@@ -261,13 +319,13 @@ const HODDashboard = () => {
     };
 
     useEffect(() => {
-        if ((activeTab === 'cie-schedule' || activeTab === 'lesson-plans') && isMyDept) {
+        if ((activeTab === 'cie-schedule' || activeTab === 'lesson-plans' || activeTab === 'monitoring') && isMyDept) {
             const fetchSubjects = async () => {
                 try {
                     const token = user?.token;
                     const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
                     const baseUrl = 'http://127.0.0.1:8083/api/subjects';
-                    const response = await fetch(`${baseUrl}/department/${selectedDept}`, { headers });
+                    const response = await fetch(`${API_BASE_URL}/subjects/department/${selectedDept}`, { headers });
                     if (response.ok) { setSubjects(await response.json()); }
                 } catch (e) { console.error("Failed to fetch subjects", e); }
             };
@@ -369,12 +427,38 @@ const HODDashboard = () => {
             <main className={styles.mainContent}>
                 <header className={styles.topHeader}>
                     <div className={styles.headerLeft}>{activeTab === 'overview' ? (<div><h1 className={styles.welcomeText}>Hello, MD Jaffar</h1><p className={styles.subtitle}>Head of Computer Science | HOD - ID: CS-H01</p></div>) : (<h1>{menuItems.find(m => m.active)?.label}</h1>)}</div>
-                    <div className={styles.headerRight}><div className={styles.deptSelector}><span>Department:</span><select value={selectedDept} onChange={(e) => setSelectedDept(e.target.value)} className={styles.deptSelect}>{departments.map(d => (<option key={d.id} value={d.id}>{d.name}</option>))}</select></div></div>
+                    <div className={styles.headerRight}>
+                        <div className={styles.deptSelector}><span>Department:</span><select value={selectedDept} onChange={(e) => setSelectedDept(e.target.value)} className={styles.deptSelect}>{departments.map(d => (<option key={d.id} value={d.id}>{d.name}</option>))}</select></div>
+                    </div>
                 </header>
                 <div className={styles.scrollableContent}>
                     {!isMyDept ? (<AccessDeniedView />) : (
                         <>
                             {activeTab === 'announcements' && (<div className={styles.announcementContainer}><div className={styles.card}><div className={styles.cardHeader}><h3>Department IA Schedule</h3><div style={{ display: 'flex', gap: '10px' }}><button className={styles.secondaryBtn}><Calendar size={16} /> Sync to Calendar</button><button className={styles.quickBtn} style={{ background: '#fef3c7', color: '#d97706' }}><ShieldAlert size={16} /> Check Conflicts</button></div></div><div className={styles.tableWrapper}><table className={styles.table}><thead><tr><th>Subject</th><th>CIE Round</th><th>Faculty</th><th>Scheduled Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>{departmentAnnouncements.length > 0 ? departmentAnnouncements.map((ann, idx) => (<tr key={idx}><td style={{ fontWeight: 600 }}>{ann.subject?.name}</td><td><span className={styles.tag}>CIE-{ann.cieNumber}</span></td><td>{ann.faculty?.username}</td><td>{ann.scheduledDate}</td><td><span className={`${styles.statusBadge} ${styles.approved}`}>{ann.status || 'SCHEDULED'}</span></td><td><button className={styles.secondaryBtn} onClick={() => alert('Viewing details...')}>View</button></td></tr>)) : (<tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>No announcements found.</td></tr>)}</tbody></table></div></div></div>)}
+                            {activeTab === 'notifications' && (
+                                <div className={styles.card}>
+                                    <h2 className={styles.cardTitle}>All Notifications</h2>
+                                    <div className={styles.notificationsList}>
+                                        {notifications.length > 0 ? notifications.map(notif => (
+                                            <div key={notif.id} className={`${styles.notifItem} ${!notif.isRead ? styles.unread : ''}`}>
+                                                <div className={styles.notifIcon}>
+                                                    {notif.type === 'INFO' ? <Bell size={20} /> : <AlertTriangle size={20} />}
+                                                </div>
+                                                <div className={styles.notifContent}>
+                                                    <p className={styles.notifMessage}>{notif.message}</p>
+                                                    <span className={styles.notifTime}>{new Date(notif.createdAt).toLocaleString()}</span>
+                                                    {notif.category && <span className={styles.notifCategory}>{notif.category}</span>}
+                                                </div>
+                                            </div>
+                                        )) : (
+                                            <div className={styles.emptyState}>
+                                                <Bell size={48} />
+                                                <p>No notifications yet</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                             {activeTab === 'overview' && (<div className={styles.overviewContainer}><div className={styles.statsRow}><div className={styles.statCard}><div className={`${styles.iconBox} ${styles.blue}`}><Users size={24} /></div><div className={styles.statInfo}><p>Total Students</p><h3>{deptStudents.length || 0}</h3></div></div><div className={styles.statCard}><div className={`${styles.iconBox} ${styles.green}`}><Briefcase size={24} /></div><div className={styles.statInfo}><p>Faculty Members</p><h3>{facultyList.length || 0}</h3></div></div><div className={styles.statCard}><div className={`${styles.iconBox} ${styles.purple}`}><FileText size={24} /></div><div className={styles.statInfo}><p>Dept. Average</p><h3>{analytics ? analytics.average : '-'}</h3></div></div><div className={styles.statCard}><div className={`${styles.iconBox} ${styles.orange}`}><Activity size={24} /></div><div className={styles.statInfo}><p>Pass Percentage</p><h3>{analytics ? analytics.passPercentage : '-'}%</h3></div></div></div><div className={styles.card} style={{ marginBottom: '1.5rem', padding: '1rem' }}><div className={styles.quickActions}><button className={styles.quickBtn} onClick={() => alert('Broadcasting message to all faculty...')}><Bell size={20} className={styles.textBlue} /><span>Broadcast Message</span></button><button className={styles.quickBtn} onClick={() => alert('Scheduling dept meeting...')}><Clock size={20} className={styles.textPurple} /><span>Schedule Meeting</span></button><button className={styles.quickBtn} onClick={() => alert('Downloading monthly report...')}><FileText size={20} className={styles.textGreen} /><span>Monthly Report</span></button><button className={styles.quickBtn} onClick={() => setActiveTab('update-marks')}><Edit size={20} className={styles.textOrange} /><span>Update Marks</span></button></div></div><div className={styles.gridTwoOne}><div className={styles.leftColumn}><div className={styles.card} style={{ marginBottom: '1.5rem' }}><div className={styles.cardHeader}><h3>Department Performance (Avg IA Score)</h3></div><div className={styles.circlesContainer}><div className={styles.circlesContainer}>{analytics ? [{ label: 'Avg Percentage', value: Math.round(((analytics.average || 0) / 50) * 100) }, { label: 'Pass Rate', value: analytics.passPercentage || 0 }, { label: 'Risk Factor', value: deptStudents.length > 0 ? Math.round(((analytics.atRiskCount || 0) / deptStudents.length) * 100) : 0 }].map((metric, index) => { const data = { labels: ['Metric', 'Remaining'], datasets: [{ data: [metric.value, 100 - metric.value], backgroundColor: ['#8b5cf6', '#f3f4f6'], borderWidth: 0, cutout: '70%' }] }; return (<div key={index} className={styles.circleItem}><div style={{ height: '120px', width: '120px', position: 'relative' }}><Doughnut data={data} options={{ ...doughnutOptions, plugins: { legend: { display: false }, tooltip: { enabled: false } } }} /><div className={styles.circleLabel}><span className={styles.circleValue}>{metric.value}%</span></div></div><p className={styles.circleName}>{metric.label}</p></div>); }) : <p style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>Loading Analytics...</p>}</div></div></div></div><div className={styles.rightColumn}><div className={styles.card}><div className={styles.cardHeader}><h3>Recent Alerts</h3></div><div className={styles.alertList}>{departmentAlerts.map(alert => (<div key={alert.id} className={`${styles.alertItem} ${styles[alert.type]}`}><AlertTriangle size={16} /><div><p>{alert.message}</p><span>{alert.date}</span></div></div>))}</div></div></div></div></div>)}
                             {activeTab === 'update-marks' && (
                                 <div className={styles.updateMarksContainer}>
@@ -435,7 +519,7 @@ const HODDashboard = () => {
                                     </div>
                                 </div>
                             )}
-                            {activeTab === 'monitoring' && (<div className={styles.monitoringContainer}><div className={styles.card}><div className={styles.cardHeader}><h3>Subject-wise IA Submission Status</h3><div className={styles.filterGroup}><select className={styles.deptSelect} style={{ padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}><option>All Semesters</option><option>2nd Semester</option><option>4th Semester</option></select></div></div><table className={styles.table}><thead><tr><th>Subject Name</th><th>Faculty</th><th>Status</th><th>Pending Count</th><th>Action</th></tr></thead><tbody>{subjectsByDept[selectedDept]?.map((subName, idx) => { const subObj = facultySubjects.find(fs => fs.name === subName) || {}; const facultyId = subObj.instructorId; const facultyObj = facultyProfiles.find(fp => fp.id === facultyId) || { name: 'Visiting Faculty', id: 'VF' }; const statusOptions = ['Approved', 'Submitted', 'Pending']; const status = statusOptions[idx % 3]; return (<tr key={idx} style={{ transition: 'background 0.2s' }}><td style={{ fontWeight: 500 }}>{subName}</td><td><div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#eff6ff', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: '0.85rem' }}>{facultyObj.name.charAt(0)}</div><span>{facultyObj.name}</span></div></td><td><span className={`${styles.statusBadge} ${status === 'Approved' ? styles.approved : status === 'Submitted' ? styles.submitted : styles.pending}`}>{status}</span></td><td>{status === 'Pending' ? (<span style={{ color: '#ef4444', fontWeight: 500 }}>12 Students</span>) : (<span style={{ color: '#94a3b8' }}>-</span>)}</td><td><button className={styles.secondaryBtn} style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }} onClick={() => setViewingSubject({ name: subName, faculty: facultyObj.name })}>View</button></td></tr>); })}</tbody></table></div>{viewingSubject && (<div className={styles.modalOverlay} onClick={() => setViewingSubject(null)}><div className={styles.modalContent} onClick={e => e.stopPropagation()}><div className={styles.modalHeader}><h2>{viewingSubject.name}</h2><button className={styles.closeBtn} onClick={() => setViewingSubject(null)}><X size={24} /></button></div><div className={styles.modalBody}><p style={{ marginBottom: '1.5rem', color: '#6b7280' }}>Faculty: <span style={{ color: '#111827', fontWeight: 600 }}>{viewingSubject.faculty}</span></p><div className={styles.tableWrapper}><table className={styles.table}><thead><tr><th>Sl. No.</th><th>Reg No</th><th>Student Name</th><th>CIE-1</th><th>CIE-2</th><th>CIE-3</th><th>Average</th></tr></thead><tbody>{deptStudents.map((student, index) => (<tr key={student.id}><td>{index + 1}</td><td>{student.regNo}</td><td>{student.name}</td><td>{student.marks.ia1}</td><td>{student.marks.ia2}</td><td>{student.marks.ia3}</td><td style={{ fontWeight: 'bold' }}>{Math.round((Number(student.marks.ia1) + Number(student.marks.ia2) + Number(student.marks.ia3)) / 3)}</td></tr>))}</tbody></table></div></div></div></div>)}</div>)}
+                            {activeTab === 'monitoring' && (<div className={styles.monitoringContainer}><div className={styles.card}><div className={styles.cardHeader}><h3>Subject-wise IA Submission Status</h3><div className={styles.filterGroup}><select className={styles.deptSelect} style={{ padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}><option>All Semesters</option><option>2nd Semester</option><option>4th Semester</option></select></div></div><table className={styles.table}><thead><tr><th>Subject Name</th><th>Faculty</th><th>Status</th><th>Pending Count</th><th>Action</th></tr></thead><tbody>{subjects.filter(sub => sub.name !== 'IC' && sub.instructorName).map((subject, idx) => { const subjectMarks = subjectMarksData[subject.name] || []; const totalStudents = deptStudents.length; const studentsWithMarks = subjectMarks.filter(mark => mark.cie1Score !== null || mark.cie2Score !== null || mark.cie3Score !== null).length; const pendingCount = totalStudents - studentsWithMarks; let status = 'Pending'; if (pendingCount === 0) { status = 'Approved'; } else if (studentsWithMarks > 0) { status = 'Submitted'; } const facultyName = subject.instructorName || 'Not Assigned'; const facultyInitial = facultyName.charAt(0); return (<tr key={subject.id} style={{ transition: 'background 0.2s' }}><td style={{ fontWeight: 500 }}>{subject.name}</td><td><div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#eff6ff', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: '0.85rem' }}>{facultyInitial}</div><span>{facultyName}</span></div></td><td><span className={`${styles.statusBadge} ${status === 'Approved' ? styles.approved : status === 'Submitted' ? styles.submitted : styles.pending}`}>{status}</span></td><td>{pendingCount > 0 ? (<span style={{ color: '#ef4444', fontWeight: 500 }}>{pendingCount} Students</span>) : (<span style={{ color: '#94a3b8' }}>-</span>)}</td><td><button className={styles.secondaryBtn} style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }} onClick={() => setViewingSubject({ name: subject.name, subjectId: subject.id, faculty: facultyName, status: status, pendingCount: pendingCount })}>View</button></td></tr>); })}</tbody></table></div>{viewingSubject && (<div className={styles.modalOverlay} onClick={() => setViewingSubject(null)}><div className={styles.modalContent} onClick={e => e.stopPropagation()}><div className={styles.modalHeader}><h2>{viewingSubject.name}</h2><button className={styles.closeBtn} onClick={() => setViewingSubject(null)}><X size={24} /></button></div><div className={styles.modalBody}><p style={{ marginBottom: '1.5rem', color: '#6b7280' }}>Faculty: <span style={{ color: '#111827', fontWeight: 600 }}>{viewingSubject.faculty}</span> <span className={`${styles.statusBadge} ${viewingSubject.status === 'Approved' ? styles.approved : viewingSubject.status === 'Submitted' ? styles.submitted : styles.pending}`} style={{ marginLeft: '10px' }}>{viewingSubject.status}</span></p><div className={styles.tableWrapper}><table className={styles.table}><thead><tr><th>Sl. No.</th><th>Reg No</th><th>Student Name</th><th>CIE-1</th><th>CIE-2</th><th>CIE-3</th><th>CIE-4</th><th>CIE-5</th><th>Total</th></tr></thead><tbody>{(() => { const subjectMarks = subjectMarksData[viewingSubject.name] || []; const studentsToShow = viewingSubject.status === 'Pending' ? deptStudents.filter(student => { const studentMark = subjectMarks.find(m => m.student?.regNo === student.regNo); return !studentMark || (studentMark.cie1Score === null && studentMark.cie2Score === null && studentMark.cie3Score === null); }) : deptStudents; return studentsToShow.map((student, index) => { const studentMark = subjectMarks.find(m => m.student?.regNo === student.regNo); const cie1 = studentMark?.cie1Score ?? '-'; const cie2 = studentMark?.cie2Score ?? '-'; const cie3 = studentMark?.cie3Score ?? '-'; const cie4 = studentMark?.cie4Score ?? '-'; const cie5 = studentMark?.cie5Score ?? '-'; const total = (studentMark?.cie1Score || 0) + (studentMark?.cie2Score || 0) + (studentMark?.cie3Score || 0) + (studentMark?.cie4Score || 0) + (studentMark?.cie5Score || 0); return (<tr key={student.id}><td>{index + 1}</td><td>{student.regNo}</td><td>{student.name}</td><td>{cie1}</td><td>{cie2}</td><td>{cie3}</td><td>{cie4}</td><td>{cie5}</td><td style={{ fontWeight: 'bold' }}>{studentMark ? total : '-'}</td></tr>); }); })()}</tbody></table></div></div></div></div>)}</div>)}
                             {activeTab === 'performance' && (
                                 <div className={styles.performanceContainer}>
                                     {/* Performance Summary Stats */}
@@ -700,7 +784,7 @@ const HODDashboard = () => {
                                                 <button
                                                     className={styles.primaryBtn}
                                                     style={{ marginTop: '1rem', width: '100%', justifyContent: 'center' }}
-                                                    onClick={() => window.open(`http://127.0.0.1:8083/api/reports/marks/${selectedDept}/pdf`, '_blank')}
+                                                    onClick={() => window.open(`${API_BASE_URL}/reports/marks/${selectedDept}/pdf`, '_blank')}
                                                 >
                                                     <Download size={18} /> Download PDF
                                                 </button>

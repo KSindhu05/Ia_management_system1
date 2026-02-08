@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
+import API_BASE_URL from '../config/api';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, Users, FilePlus, Save, AlertCircle, Phone, FileText, CheckCircle, Search, Filter, Mail, X, Download, Clock, BarChart2, TrendingDown, Award, ClipboardList, AlertTriangle, Edit3, Calendar, UserCheck, BookOpen, Upload, Megaphone, Lock } from 'lucide-react';
+import { LayoutDashboard, Users, FilePlus, Save, AlertCircle, Phone, FileText, CheckCircle, Search, Filter, Mail, X, Download, Clock, BarChart2, TrendingDown, Award, ClipboardList, AlertTriangle, Edit3, Calendar, UserCheck, BookOpen, Upload, Megaphone, Lock, Bell } from 'lucide-react';
 import { facultyData, facultyProfiles, facultySubjects, studentsList, labSchedule, getMenteesForFaculty } from '../utils/mockData';
 import styles from './FacultyDashboard.module.css';
 
@@ -15,10 +16,15 @@ const FacultyDashboard = () => {
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
     const [searchTerm, setSearchTerm] = useState('');
 
+    // Notification State
+    const [notifications, setNotifications] = useState([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [myAnnouncements, setMyAnnouncements] = useState([]);
+
     // API State
     const [subjects, setSubjects] = useState([]);
     const [students, setStudents] = useState([]);
-    const API_BASE = 'http://localhost:8083/api/marks';
+    const API_BASE = `${API_BASE_URL}/marks`;
     const [facultyClassAnalytics, setFacultyClassAnalytics] = useState({
         evaluated: 0,
         pending: 0,
@@ -92,6 +98,29 @@ const FacultyDashboard = () => {
             } catch (e) {
                 console.error("Failed to fetch analytics", e);
             }
+
+            // Fetch Notifications
+            try {
+                const notifRes = await fetch(`${API_BASE_URL}/api/cie/faculty/notifications`, { headers });
+                if (notifRes.ok) {
+                    const notifs = await notifRes.json();
+                    setNotifications(notifs);
+                    setUnreadCount(notifs.filter(n => !n.isRead).length);
+                }
+            } catch (e) {
+                console.error("Failed to fetch notifications", e);
+            }
+
+            // Fetch My Announcements
+            try {
+                const annRes = await fetch(`${API_BASE_URL}/api/cie/faculty/announcements/list`, { headers });
+                if (annRes.ok) {
+                    const anns = await annRes.json();
+                    setMyAnnouncements(anns);
+                }
+            } catch (e) {
+                console.error("Failed to fetch announcements", e);
+            }
         };
 
         fetchInitialData();
@@ -142,7 +171,7 @@ const FacultyDashboard = () => {
             const token = user?.token;
             const headers = { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
 
-            const res = await fetch(`http://127.0.0.1:8083/api/attendance/update`, {
+            const res = await fetch(`${API_BASE_URL}/attendance/update`, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({
@@ -174,7 +203,7 @@ const FacultyDashboard = () => {
                 try {
                     const token = user?.token;
                     const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-                    const res = await fetch(`http://127.0.0.1:8083/api/attendance?subjectId=${selectedSubject.id}&date=${attendanceDate}`, { headers });
+                    const res = await fetch(`${API_BASE_URL}/attendance?subjectId=${selectedSubject.id}&date=${attendanceDate}`, { headers });
                     if (res.ok) {
                         const data = await res.json();
                         // data is list { studentId, status }
@@ -241,7 +270,7 @@ const FacultyDashboard = () => {
 
             // Fix API Base URL usage
             const baseUrl = API_BASE.replace('/marks', '');
-            const response = await fetch(`${baseUrl}/faculty/announcements/details?subjectId=${iaConfig.subjectId}&cieNumber=${iaConfig.cieNumber}`, {
+            const response = await fetch(`${API_BASE_URL}/cie/faculty/announcements/details?subjectId=${iaConfig.subjectId}&cieNumber=${iaConfig.cieNumber}`, {
                 headers
             });
 
@@ -297,7 +326,7 @@ const FacultyDashboard = () => {
                 startTime: iaConfig.time || null
             };
 
-            const response = await fetch(`${baseUrl}/faculty/announcements?subjectId=${iaConfig.subjectId}`, {
+            const response = await fetch(`${API_BASE_URL}/cie/faculty/announcements?subjectId=${iaConfig.subjectId}`, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify(payload)
@@ -405,6 +434,20 @@ const FacultyDashboard = () => {
             icon: <UserCheck size={20} />,
             isActive: activeSection === 'Proctoring',
             onClick: () => { setActiveSection('Proctoring'); setSelectedSubject(null); }
+        },
+        {
+            label: 'Notifications',
+            path: '/dashboard/faculty',
+            icon: <Bell size={20} />,
+            isActive: activeSection === 'Notifications',
+            onClick: () => { setActiveSection('Notifications'); setSelectedSubject(null); }
+        },
+        {
+            label: 'My Announcements',
+            path: '/dashboard/faculty',
+            icon: <Megaphone size={20} />,
+            isActive: activeSection === 'My Announcements',
+            onClick: () => { setActiveSection('My Announcements'); setSelectedSubject(null); }
         },
     ];
 
@@ -1962,6 +2005,87 @@ const FacultyDashboard = () => {
         );
     };
 
+    // Render Notifications Section
+    const renderNotifications = () => {
+        return (
+            <div className={styles.card}>
+                <h2 className={styles.cardTitle}>All Notifications</h2>
+                <div className={styles.notificationsList}>
+                    {notifications.length > 0 ? notifications.map(notif => (
+                        <div key={notif.id} className={`${styles.notifItem} ${!notif.isRead ? styles.unread : ''}`}>
+                            <div className={styles.notifIcon}>
+                                {notif.type === 'INFO' ? <Bell size={20} /> : <AlertCircle size={20} />}
+                            </div>
+                            <div className={styles.notifContent}>
+                                <p className={styles.notifMessage}>{notif.message}</p>
+                                <span className={styles.notifTime}>{new Date(notif.createdAt).toLocaleString()}</span>
+                                {notif.category && <span className={styles.notifCategory}>{notif.category}</span>}
+                            </div>
+                        </div>
+                    )) : (
+                        <div className={styles.emptyState}>
+                            <Bell size={48} />
+                            <p>No notifications yet</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+    // Render My Announcements Section
+    const renderMyAnnouncements = () => {
+        return (
+            <div className={styles.card}>
+                <h2 className={styles.cardTitle}>My CIE Announcements</h2>
+                <div className={styles.tableContainer}>
+                    <table className={styles.table}>
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                <th>CIE Number</th>
+                                <th>Scheduled Date</th>
+                                <th>Start Time</th>
+                                <th>Room</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {myAnnouncements.length > 0 ? myAnnouncements.map(ann => (
+                                <tr key={ann.id}>
+                                    <td>
+                                        <div className={styles.subjectCell}>
+                                            <span className={styles.subjectName}>{ann.Subject?.name || 'N/A'}</span>
+                                            <span className={styles.subjectCode}>{ann.Subject?.code || ''}</span>
+                                        </div>
+                                    </td>
+                                    <td>CIE {ann.cieNumber}</td>
+                                    <td>{new Date(ann.scheduledDate).toLocaleDateString()}</td>
+                                    <td>{ann.startTime}</td>
+                                    <td>{ann.examRoom}</td>
+                                    <td>
+                                        <span className={`${styles.badge} ${ann.status === 'SCHEDULED' ? styles.good : styles.needsFocus}`}>
+                                            {ann.status}
+                                        </span>
+                                    </td>
+                                </tr>
+                            )) : (
+                                <tr>
+                                    <td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>
+                                        <div className={styles.emptyState}>
+                                            <Megaphone size={48} />
+                                            <p>No announcements created yet</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <DashboardLayout menuItems={menuItems} >
             <header className={styles.header}>
@@ -1971,7 +2095,6 @@ const FacultyDashboard = () => {
                         <p className={styles.subtitle}>Lecturer | {user?.department || 'Department'}</p>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-
                     </div>
                 </div>
             </header>
@@ -1984,6 +2107,8 @@ const FacultyDashboard = () => {
             {activeSection === 'Lesson Plan' && renderLessonPlan()}
             {activeSection === 'CIE Schedule' && renderCIESchedule()}
             {activeSection === 'Proctoring' && renderProctoring()}
+            {activeSection === 'Notifications' && renderNotifications()}
+            {activeSection === 'My Announcements' && renderMyAnnouncements()}
 
             {/* MODALS */}
             {renderStudentProfileModal()}
