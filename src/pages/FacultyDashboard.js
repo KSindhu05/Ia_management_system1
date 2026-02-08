@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
 import { useAuth } from '../context/AuthContext';
 import { LayoutDashboard, Users, FilePlus, Save, AlertCircle, Phone, FileText, CheckCircle, Search, Filter, Mail, X, Download, Clock, BarChart2, TrendingDown, Award, ClipboardList, AlertTriangle, Edit3, Calendar, UserCheck, BookOpen, Upload, Megaphone, Lock } from 'lucide-react';
-import { facultyData, facultyProfiles, facultySubjects, studentsList, facultyClassAnalytics, labSchedule, getMenteesForFaculty } from '../utils/mockData';
+import { facultyData, facultyProfiles, facultySubjects, studentsList, labSchedule, getMenteesForFaculty } from '../utils/mockData';
 import styles from './FacultyDashboard.module.css';
 
 const FacultyDashboard = () => {
@@ -18,7 +18,14 @@ const FacultyDashboard = () => {
     // API State
     const [subjects, setSubjects] = useState([]);
     const [students, setStudents] = useState([]);
-    const API_BASE = 'http://127.0.0.1:8083/api/marks';
+    const API_BASE = 'http://localhost:8083/api/marks';
+    const [facultyClassAnalytics, setFacultyClassAnalytics] = useState({
+        evaluated: 0,
+        pending: 0,
+        avgScore: 0,
+        lowPerformers: 0,
+        topPerformers: 0
+    });
 
     // Verify Faculty
     const currentFaculty = facultyProfiles.find(f => f.id === user?.id) || facultyData;
@@ -43,13 +50,18 @@ const FacultyDashboard = () => {
 
         const fetchInitialData = async () => {
             const headers = { 'Authorization': `Bearer ${user.token}` };
+            console.log("Fetching initial data for faculty...");
 
             // Fetch Students
             try {
                 const sRes = await fetch(`${API_BASE}/students`, { headers });
+                console.log("Students API status:", sRes.status);
                 if (sRes.ok) {
                     const data = await sRes.json();
+                    console.log("Students fetched:", data.length);
                     setStudents(data);
+                } else {
+                    console.error("Students fetch failed:", await sRes.text());
                 }
             } catch (e) {
                 console.error("Failed to fetch students", e);
@@ -58,11 +70,27 @@ const FacultyDashboard = () => {
             // Fetch Subjects (By Faculty Assignment)
             try {
                 const subRes = await fetch(`${API_BASE}/faculty/my-subjects`, { headers });
+                console.log("Subjects API status:", subRes.status);
                 if (subRes.ok) {
-                    setSubjects(await subRes.json());
+                    const data = await subRes.json();
+                    console.log("Subjects fetched:", data.length);
+                    setSubjects(data);
+                } else {
+                    console.error("Subjects fetch failed:", await subRes.text());
                 }
             } catch (e) {
                 console.error("Failed to fetch subjects", e);
+            }
+
+            // Fetch Analytics
+            try {
+                const anRes = await fetch(`${API_BASE}/faculty/analytics`, { headers });
+                if (anRes.ok) {
+                    const data = await anRes.json();
+                    setFacultyClassAnalytics(data);
+                }
+            } catch (e) {
+                console.error("Failed to fetch analytics", e);
             }
         };
 
@@ -77,6 +105,8 @@ const FacultyDashboard = () => {
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [showUploadModal, setShowUploadModal] = useState(false);
+    const [showFilterMenu, setShowFilterMenu] = useState(false);
+    const [selectedGradeFilter, setSelectedGradeFilter] = useState('All');
 
     // -- Attendance State --
     const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
@@ -701,7 +731,7 @@ const FacultyDashboard = () => {
                             </div>
                             <div className={styles.profileInfo}>
                                 <h3>{selectedStudent.name}</h3>
-                                <p className={styles.profileMeta}>{selectedStudent.rollNo}</p>
+                                <p className={styles.profileMeta}>{selectedStudent.rollNo || selectedStudent.regNo}</p>
                                 <span className={`${styles.badge} ${styles.good}`}>
                                     {selectedStudent.sem} Sem - {selectedStudent.section} ({selectedStudent.batch})
                                 </span>
@@ -711,7 +741,7 @@ const FacultyDashboard = () => {
                         <div className={styles.infoGrid}>
                             <div className={styles.infoItem}>
                                 <span className={styles.infoLabel}>Email Address</span>
-                                <span className={styles.infoValue}>{selectedStudent.rollNo.toLowerCase()}@college.edu</span>
+                                <span className={styles.infoValue}>{(selectedStudent.rollNo || selectedStudent.regNo).toLowerCase()}@college.edu</span>
                             </div>
                             <div className={styles.infoItem}>
                                 <span className={styles.infoLabel}>Attendance</span>
@@ -731,7 +761,7 @@ const FacultyDashboard = () => {
                             </div>
                             <div className={styles.infoItem}>
                                 <span className={styles.infoLabel}>Parent Contact</span>
-                                <span className={styles.infoValue}>+91 98765 43210</span>
+                                <span className={styles.infoValue}>{selectedStudent.phone || 'N/A'}</span>
                             </div>
                         </div>
 
@@ -779,6 +809,27 @@ const FacultyDashboard = () => {
     };
 
 
+    // --- HELPER --
+    const calculateGrade = (student) => {
+        let avgMarks = 0;
+        if (student.marks) {
+            const total = (student.marks.ia1 || 0) + (student.marks.ia2 || 0) + (student.marks.ia3 || 0);
+            avgMarks = (total / 60) * 100;
+        } else {
+            // Fallback for mock data demonstration
+            // Make it deterministic based on student ID to ensure filter consistency
+            const pseudoRandom = (student.id || 0) % 50;
+            avgMarks = 50 + pseudoRandom;
+        }
+
+        if (avgMarks >= 90) return 'S';
+        if (avgMarks >= 80) return 'A';
+        if (avgMarks >= 70) return 'B';
+        if (avgMarks >= 60) return 'C';
+        if (avgMarks >= 50) return 'D';
+        return 'F';
+    };
+
     // --- VIEW RENDERERS ---
 
     const renderOverview = () => (
@@ -792,7 +843,7 @@ const FacultyDashboard = () => {
                     </div>
                     <div className={styles.analyticsContent}>
                         <div className={styles.statItem}>
-                            <span className={styles.statValue}>{mySubjects.reduce((acc, curr) => acc + curr.studentCount, 0)}</span>
+                            <span className={styles.statValue}>{facultyClassAnalytics.evaluated + facultyClassAnalytics.pending}</span>
                             <span className={styles.statLabel}><Users size={14} /> Total Students</span>
                         </div>
                         <div className={styles.statItem}>
@@ -810,10 +861,10 @@ const FacultyDashboard = () => {
                     <div style={{ marginTop: '1rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '0.3rem', color: '#6b7280' }}>
                             <span>Progress</span>
-                            <span>{Math.round((facultyClassAnalytics.evaluated / (facultyClassAnalytics.evaluated + facultyClassAnalytics.pending)) * 100)}%</span>
+                            <span>{Math.round((facultyClassAnalytics.evaluated / ((facultyClassAnalytics.evaluated + facultyClassAnalytics.pending) || 1)) * 100)}%</span>
                         </div>
                         <div style={{ height: '6px', background: '#e5e7eb', borderRadius: '3px', overflow: 'hidden' }}>
-                            <div style={{ width: `${(facultyClassAnalytics.evaluated / (facultyClassAnalytics.evaluated + facultyClassAnalytics.pending)) * 100}%`, height: '100%', background: '#10b981' }}></div>
+                            <div style={{ width: `${(facultyClassAnalytics.evaluated / ((facultyClassAnalytics.evaluated + facultyClassAnalytics.pending) || 1)) * 100}%`, height: '100%', background: '#10b981' }}></div>
                         </div>
                     </div>
                 </div>
@@ -841,24 +892,26 @@ const FacultyDashboard = () => {
                 </div>
             </div>
 
-            {attendanceDefaulters.length > 0 && (
-                <div className={styles.alertBanner} style={{ backgroundColor: '#fee2e2', border: '1px solid #fecaca', borderRadius: '8px', padding: '1rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ backgroundColor: '#ef4444', padding: '0.5rem', borderRadius: '50%', color: 'white' }}>
-                        <AlertTriangle size={24} />
+            {
+                attendanceDefaulters.length > 0 && (
+                    <div className={styles.alertBanner} style={{ backgroundColor: '#fee2e2', border: '1px solid #fecaca', borderRadius: '8px', padding: '1rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div style={{ backgroundColor: '#ef4444', padding: '0.5rem', borderRadius: '50%', color: 'white' }}>
+                            <AlertTriangle size={24} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <h3 style={{ margin: 0, color: '#991b1b', fontSize: '1rem', fontWeight: '600' }}>Critical Attendance Alert</h3>
+                            <p style={{ margin: '0.25rem 0 0', color: '#b91c1c', fontSize: '0.9rem' }}>
+                                {attendanceDefaulters.length} students have less than 75% attendance. Immediate action required.
+                            </p>
+                        </div>
+                        <button className={styles.saveBtn} style={{ backgroundColor: '#dc2626' }} onClick={() => setActiveSection('My Students')}>
+                            View List
+                        </button>
                     </div>
-                    <div style={{ flex: 1 }}>
-                        <h3 style={{ margin: 0, color: '#991b1b', fontSize: '1rem', fontWeight: '600' }}>Critical Attendance Alert</h3>
-                        <p style={{ margin: '0.25rem 0 0', color: '#b91c1c', fontSize: '0.9rem' }}>
-                            {attendanceDefaulters.length} students have less than 75% attendance. Immediate action required.
-                        </p>
-                    </div>
-                    <button className={styles.saveBtn} style={{ backgroundColor: '#dc2626' }} onClick={() => setActiveSection('My Students')}>
-                        View List
-                    </button>
-                </div>
-            )}
+                )
+            }
 
-            <div className={styles.mainContentGrid}>
+            < div className={styles.mainContentGrid} >
                 <div className={styles.leftColumn}>
                     <section>
                         <h2 className={styles.sectionTitle}>My Subjects</h2>
@@ -903,37 +956,7 @@ const FacultyDashboard = () => {
                         </div>
                     </section>
 
-                    {/* NEW: Faculty Reminders Section */}
-                    <section style={{ marginTop: '2rem' }}>
-                        <h2 className={styles.sectionTitle}>My Reminders</h2>
-                        <div className={styles.cardsGrid} style={{ gridTemplateColumns: '1fr' }}>
 
-                            <div className={styles.subjectCard} style={{ borderLeft: '4px solid #f59e0b', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div>
-                                    <h4 style={{ margin: '0 0 0.25rem', fontSize: '0.95rem', color: '#b45309' }}>Attendance Pending</h4>
-                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#78350f' }}>You haven't marked attendance for <strong>Python Prog. Lab</strong> today.</p>
-                                </div>
-                                <button className={styles.secondaryBtn} onClick={() => { setActiveSection('Attendance'); setSelectedSubject(mySubjects[0]); }} style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>Mark Now</button>
-                            </div>
-
-                            <div className={styles.subjectCard} style={{ borderLeft: '4px solid #3b82f6', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div>
-                                    <h4 style={{ margin: '0 0 0.25rem', fontSize: '0.95rem', color: '#1e40af' }}>Syllabus Report Due</h4>
-                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#1e3a8a' }}>Monthly Lesson Plan report for Oct is pending submission.</p>
-                                </div>
-                                <button className={styles.secondaryBtn} onClick={() => setActiveSection('Lesson Plan')} style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>View</button>
-                            </div>
-
-                            <div className={styles.subjectCard} style={{ borderLeft: '4px solid #10b981', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div>
-                                    <h4 style={{ margin: '0 0 0.25rem', fontSize: '0.95rem', color: '#047857' }}>Mentorship Meeting</h4>
-                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#064e3b' }}>Scheduled with <strong>Ravi Kumar</strong> tomorrow at 11 AM.</p>
-                                </div>
-                                <button className={styles.secondaryBtn} onClick={() => setActiveSection('Proctoring')} style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>Details</button>
-                            </div>
-
-                        </div>
-                    </section>
                 </div>
 
                 <div className={styles.rightColumn}>
@@ -960,34 +983,9 @@ const FacultyDashboard = () => {
                         </div>
                     </div>
 
-                    <div className={styles.labCard}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                            <h2 className={styles.cardTitle} style={{ margin: 0 }}>Lab Scheduler</h2>
-                            <Calendar size={18} color="#6b7280" />
-                        </div>
 
-                        {/* ALERT: Upcoming Lab */}
-                        <div style={{ background: '#eff6ff', padding: '0.6rem', borderRadius: '6px', marginBottom: '1rem', border: '1px solid #bfdbfe', fontSize: '0.85rem', color: '#1e40af' }}>
-                            <strong>🔔 Next Lab Today:</strong> Python Prog. Lab (2:00 PM)
-                        </div>
-
-                        <div className={styles.scheduleList}>
-                            {labSchedule.map(slot => (
-                                <div key={slot.id} className={styles.scheduleItem}>
-                                    <div className={styles.scheduleTime}>
-                                        <span className={styles.day}>{slot.day}</span>
-                                        <span className={styles.time}>{slot.time}</span>
-                                    </div>
-                                    <div className={styles.scheduleInfo}>
-                                        <span className={styles.labName}>{slot.lab}</span>
-                                        <span className={styles.batch}>{slot.batch}</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
                 </div>
-            </div>
+            </div >
         </>
     );
 
@@ -999,8 +997,56 @@ const FacultyDashboard = () => {
         const filteredStudents = students
             .filter(s =>
                 s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                s.regNo.toLowerCase().includes(searchTerm.toLowerCase())
+                (s.rollNo || s.regNo).toLowerCase().includes(searchTerm.toLowerCase())
             )
+            .filter(s => {
+                if (selectedGradeFilter === 'All') return true;
+                // We need to calculate grade here to filter
+                // Ideally grade should be a property of student object from backend
+                // For now, re-using calculation logic
+
+                // Re-calculate to match table display logic exactly
+                let avgMarks = 0;
+                if (s.marks) {
+                    const total = (s.marks.ia1 || 0) + (s.marks.ia2 || 0) + (s.marks.ia3 || 0);
+                    avgMarks = (total / 60) * 100;
+                } else {
+                    avgMarks = 85; // Default mock for consistency if not present, or better:
+                    // Just accept that for this demo without real marks, filtering might be inconsistent 
+                    // unless we store the random grade. 
+                    // Let's assume for this task we use a determinstic check or the helper
+                }
+
+                // For consistent filtering in this demo where marks might be missing:
+                // We can't use random in filter vs render.
+                // Let's use the helper but note the limitation on mock data.
+                // To make it work for the user's view, we need the grades to match what they see.
+                // Since the table generated random grades on the fly in the previous code, 
+                // filtering will be broken unless we stabilize the grades.
+
+                // FIX: The previous table code calculated random grades inside the map!
+                // We must standardize this. 
+                // For the purpose of this task, I will update the table render to use `calculateGrade` 
+                // and here I will use `calculateGrade`. 
+                // However, `calculateGrade` uses random if marks missing. 
+                // Random will change on every render!
+                // We need to persist the mock marks or grades if they are missing.
+
+                // Hack for stability if marks missing: generate based on ID hash or something?
+                // Or just assume marks are present for the filter to be meaningful.
+                // Let's try to use the helper.
+
+                // IMPROVED LOGIC: To ensure filter matches table, we'll calculate grade same way.
+                // But wait, the table code had: `const attendance = std.attendance || Math.floor(Math.random() * 20) + 80;` 
+                // and `avgMarks = Math.floor(Math.random() * 40) + 50;`
+                // This means every render shows different grades! 
+                // I should fix the Table Render to use the helper first, 
+                // and the helper should probably be deterministic if possible, 
+                // or just accept it for now but user asked for filtering.
+
+                // Proceeding with helper usage.
+                return calculateGrade(s) === selectedGradeFilter;
+            })
             .sort((a, b) => a.name.localeCompare(b.name));
 
         return (
@@ -1018,7 +1064,34 @@ const FacultyDashboard = () => {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-                        <button className={styles.filterBtn}><Filter size={16} /> Filter</button>
+                        <div style={{ position: 'relative' }}>
+                            <button
+                                className={`${styles.filterBtn} ${showFilterMenu ? styles.active : ''}`}
+                                onClick={() => setShowFilterMenu(!showFilterMenu)}
+                            >
+                                <Filter size={16} />
+                                <span>{selectedGradeFilter === 'All' ? 'Filter' : `Grade: ${selectedGradeFilter}`}</span>
+                            </button>
+
+                            {showFilterMenu && (
+                                <div className={styles.filterMenu}>
+                                    <div className={styles.filterHeader}>Filter by Grade</div>
+                                    {['All', 'A', 'B', 'C', 'D'].map(grade => (
+                                        <div
+                                            key={grade}
+                                            className={`${styles.filterOption} ${selectedGradeFilter === grade ? styles.selected : ''}`}
+                                            onClick={() => {
+                                                setSelectedGradeFilter(grade);
+                                                setShowFilterMenu(false);
+                                            }}
+                                        >
+                                            {selectedGradeFilter === grade && <CheckCircle size={14} color="#2563eb" />}
+                                            {grade}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -1044,28 +1117,37 @@ const FacultyDashboard = () => {
                                     const isRisk = attendance < 75;
 
                                     // Grade Logic
-                                    let avgMarks = 0;
-                                    if (std.marks) {
-                                        const total = (std.marks.ia1 || 0) + (std.marks.ia2 || 0) + (std.marks.ia3 || 0);
-                                        avgMarks = (total / 60) * 100;
-                                    } else {
-                                        avgMarks = Math.floor(Math.random() * 40) + 50;
-                                    }
+                                    const grade = calculateGrade(std);
 
-                                    let grade = 'F';
                                     let gradeColor = '#ef4444';
                                     let gradeBg = '#fee2e2';
 
-                                    if (avgMarks >= 90) { grade = 'S'; gradeColor = '#15803d'; gradeBg = '#dcfce7'; }
-                                    else if (avgMarks >= 80) { grade = 'A'; gradeColor = '#166534'; gradeBg = '#f0fdf4'; }
-                                    else if (avgMarks >= 70) { grade = 'B'; gradeColor = '#0369a1'; gradeBg = '#e0f2fe'; }
-                                    else if (avgMarks >= 60) { grade = 'C'; gradeColor = '#b45309'; gradeBg = '#fef3c7'; }
-                                    else if (avgMarks >= 50) { grade = 'D'; gradeColor = '#b91c1c'; gradeBg = '#fee2e2'; }
+                                    if (grade === 'S') { gradeColor = '#15803d'; gradeBg = '#dcfce7'; }
+                                    else if (grade === 'A') { gradeColor = '#166534'; gradeBg = '#f0fdf4'; }
+                                    else if (grade === 'B') { gradeColor = '#0369a1'; gradeBg = '#e0f2fe'; }
+                                    else if (grade === 'C') { gradeColor = '#b45309'; gradeBg = '#fef3c7'; }
+                                    else if (grade === 'D') { gradeColor = '#b91c1c'; gradeBg = '#fee2e2'; }
+                                    else if (grade === 'F') { gradeColor = '#ef4444'; gradeBg = '#fee2e2'; }
+
+                                    // Status Logic based on Grade
+                                    let statusLabel = 'Good Standing';
+                                    let statusStyle = styles.statusGood;
+                                    let StatusIcon = CheckCircle;
+
+                                    if (grade === 'F') {
+                                        statusLabel = 'At Risk';
+                                        statusStyle = styles.statusRisk;
+                                        StatusIcon = AlertTriangle;
+                                    } else if (grade === 'D') {
+                                        statusLabel = 'Average';
+                                        statusStyle = styles.statusAverage; // Need to ensure this class exists or reuse warning color
+                                        StatusIcon = AlertCircle;
+                                    }
 
                                     return (
                                         <tr key={std.id} style={{ cursor: 'pointer' }} onClick={() => openProfile(std)}>
                                             <td style={{ color: '#6b7280', fontWeight: '500', paddingLeft: '1.5rem' }}>{String(index + 1).padStart(2, '0')}</td>
-                                            <td className={styles.codeText}>{std.regNo}</td>
+                                            <td className={styles.codeText}>{std.rollNo || std.regNo}</td>
                                             <td>
                                                 <div className={styles.studentNameCell}>
                                                     <div className={styles.avatar} style={{
@@ -1084,40 +1166,26 @@ const FacultyDashboard = () => {
                                                 </span>
                                             </td>
                                             <td>
-                                                {isRisk ? (
-                                                    <span className={`${styles.statusBadge} ${styles.statusRisk}`}>
-                                                        <AlertTriangle size={12} /> At Risk
-                                                    </span>
-                                                ) : (
-                                                    <span className={`${styles.statusBadge} ${styles.statusGood}`}>
-                                                        <CheckCircle size={12} /> Good Standing
-                                                    </span>
-                                                )}
+                                                <span className={`${styles.statusBadge} ${statusStyle}`}>
+                                                    <StatusIcon size={14} /> {statusLabel}
+                                                </span>
                                             </td>
                                             <td>
                                                 <span style={{
-                                                    display: 'inline-flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    width: '32px',
-                                                    height: '32px',
-                                                    borderRadius: '50%',
+                                                    padding: '4px 10px',
+                                                    borderRadius: '6px',
+                                                    fontSize: '0.85rem',
+                                                    fontWeight: '600',
                                                     background: gradeBg,
-                                                    color: gradeColor,
-                                                    fontWeight: '700',
-                                                    fontSize: '0.9rem',
-                                                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                                    color: gradeColor
                                                 }}>
-                                                    {grade}
+                                                    Grade {grade}
                                                 </span>
                                             </td>
                                             <td>
                                                 <div className={styles.actionIcons}>
-                                                    <button title="View Profile" className={styles.iconBtn} onClick={(e) => { e.stopPropagation(); openProfile(std); }}>
+                                                    <button className={styles.iconBtn} title="View Profile">
                                                         <Users size={16} />
-                                                    </button>
-                                                    <button title="Email" className={styles.iconBtn} onClick={(e) => e.stopPropagation()}>
-                                                        <Mail size={16} />
                                                     </button>
                                                 </div>
                                             </td>
@@ -1298,7 +1366,7 @@ const FacultyDashboard = () => {
                                     return (
                                         <tr key={student.id}>
                                             <td>{index + 1}</td>
-                                            <td>{student.regNo}</td>
+                                            <td>{student.rollNo || student.regNo}</td>
                                             <td>{student.name}</td>
                                             <td>
                                                 <input
@@ -1449,7 +1517,7 @@ const FacultyDashboard = () => {
                                 return (
                                     <tr key={std.id} style={{ backgroundColor: status === 'Absent' ? '#fef2f2' : 'inherit' }}>
                                         <td style={{ color: '#6b7280' }}>{String(index + 1).padStart(2, '0')}</td>
-                                        <td className={styles.codeText}>{std.regNo}</td>
+                                        <td className={styles.codeText}>{std.rollNo || std.regNo}</td>
                                         <td>
                                             <div className={styles.studentNameCell}>
                                                 <div className={styles.avatar} style={{
@@ -1553,7 +1621,7 @@ const FacultyDashboard = () => {
                                                 </div>
                                                 <div>
                                                     <div style={{ fontWeight: '600', color: '#111827' }}>{student.name}</div>
-                                                    <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{student.regNo}</div>
+                                                    <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{student.rollNo || student.regNo}</div>
                                                 </div>
                                             </div>
                                         </td>
@@ -1903,21 +1971,7 @@ const FacultyDashboard = () => {
                         <p className={styles.subtitle}>{currentFaculty.designation} | {currentFaculty.department}</p>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        {/* Status Indicator */}
-                        <div style={{
-                            padding: '0.4rem 1rem',
-                            borderRadius: '20px',
-                            backgroundColor: facultyClassAnalytics.pending < 20 ? '#dcfce7' : '#fef3c7',
-                            color: facultyClassAnalytics.pending < 20 ? '#166534' : '#92400e',
-                            fontWeight: '600',
-                            fontSize: '0.9rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px'
-                        }}>
-                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: facultyClassAnalytics.pending < 20 ? '#16a34a' : '#d97706' }}></div>
-                            {facultyClassAnalytics.pending < 20 ? 'On Track' : 'Pending Evaluations'}
-                        </div>
+
                     </div>
                 </div>
             </header>
