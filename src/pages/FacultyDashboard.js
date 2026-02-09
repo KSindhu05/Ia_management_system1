@@ -20,6 +20,7 @@ const FacultyDashboard = () => {
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [myAnnouncements, setMyAnnouncements] = useState([]);
+    const [publishedSchedules, setPublishedSchedules] = useState([]); // CIE schedules published by HOD
 
     // API State
     const [subjects, setSubjects] = useState([]);
@@ -120,6 +121,17 @@ const FacultyDashboard = () => {
                 }
             } catch (e) {
                 console.error("Failed to fetch announcements", e);
+            }
+
+            // Fetch Published CIE Schedules (from HOD)
+            try {
+                const schedRes = await fetch(`${API_BASE_URL}/cie/faculty/schedules`, { headers });
+                if (schedRes.ok) {
+                    const scheds = await schedRes.json();
+                    setPublishedSchedules(scheds);
+                }
+            } catch (e) {
+                console.error("Failed to fetch published schedules", e);
             }
         };
 
@@ -261,15 +273,34 @@ const FacultyDashboard = () => {
         if (activeSection === 'CIE Schedule' && iaConfig.subjectId && iaConfig.cieNumber) {
             fetchSchedule();
         }
-    }, [iaConfig.subjectId, iaConfig.cieNumber, activeSection]);
+    }, [iaConfig.subjectId, iaConfig.cieNumber, activeSection, publishedSchedules]);
 
     const fetchSchedule = async () => {
+        // First, check if we have this schedule in publishedSchedules
+        const matchingSchedule = publishedSchedules.find(
+            sched => String(sched.subject?.id || sched.subjectId) === String(iaConfig.subjectId) &&
+                String(sched.cieNumber) === String(iaConfig.cieNumber)
+        );
+
+        if (matchingSchedule) {
+            // Use the already fetched published schedule data
+            setIaConfig(prev => ({
+                ...prev,
+                date: matchingSchedule.scheduledDate || '',
+                duration: matchingSchedule.durationMinutes || '60',
+                syllabus: matchingSchedule.syllabusCoverage || prev.syllabus || '',
+                instructions: matchingSchedule.instructions || prev.instructions || '',
+                room: matchingSchedule.examRoom || '',
+                time: matchingSchedule.startTime || ''
+            }));
+            return;
+        }
+
+        // Fallback to API call if not found in state
         try {
-            const token = user?.token; // Assuming auth token
+            const token = user?.token;
             const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
 
-            // Fix API Base URL usage
-            const baseUrl = API_BASE.replace('/marks', '');
             const response = await fetch(`${API_BASE_URL}/cie/faculty/announcements/details?subjectId=${iaConfig.subjectId}&cieNumber=${iaConfig.cieNumber}`, {
                 headers
             });
@@ -287,9 +318,12 @@ const FacultyDashboard = () => {
                         time: data.startTime || ''
                     }));
                 } else {
-                    // Reset schedule details if not found (or keeping syllabus empty for new entry)
+                    // Reset schedule details if not found
                     setIaConfig(prev => ({ ...prev, date: '', duration: '60', syllabus: '', instructions: '', room: '', time: '' }));
                 }
+            } else {
+                // Reset if API call fails
+                setIaConfig(prev => ({ ...prev, date: '', duration: '60', room: '', time: '' }));
             }
         } catch (e) {
             console.error("Error fetching announcement details", e);
@@ -1999,6 +2033,59 @@ const FacultyDashboard = () => {
                                 </ul>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                {/* READ-ONLY Published Schedules from HOD */}
+                <div className={styles.card} style={{ marginTop: '2rem' }}>
+                    <div className={styles.cardHeader}>
+                        <h3 style={{ margin: 0, color: '#1e293b' }}>📅 Published CIE Schedules (Read Only)</h3>
+                        <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Scheduled by HOD</span>
+                    </div>
+                    <div className={styles.tableContainer}>
+                        <table className={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th>Subject</th>
+                                    <th>CIE</th>
+                                    <th>Date</th>
+                                    <th>Time</th>
+                                    <th>Duration</th>
+                                    <th>Room</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {publishedSchedules.length > 0 ? publishedSchedules.map(sched => (
+                                    <tr key={sched.id}>
+                                        <td style={{ fontWeight: 600 }}>{sched.subject?.name || 'Unknown'}</td>
+                                        <td><span className={styles.badge}>CIE-{sched.cieNumber}</span></td>
+                                        <td>{sched.scheduledDate || '-'}</td>
+                                        <td>{sched.startTime || '-'}</td>
+                                        <td>{sched.durationMinutes ? `${sched.durationMinutes}m` : '-'}</td>
+                                        <td>{sched.examRoom || '-'}</td>
+                                        <td>
+                                            <span style={{
+                                                padding: '4px 10px',
+                                                borderRadius: '20px',
+                                                fontSize: '0.8rem',
+                                                fontWeight: 600,
+                                                background: '#dcfce7',
+                                                color: '#166534'
+                                            }}>
+                                                {sched.status || 'SCHEDULED'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                )) : (
+                                    <tr>
+                                        <td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+                                            No CIE schedules published yet.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>

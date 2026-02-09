@@ -18,10 +18,11 @@ router.get('/my-marks', authMiddleware, roleMiddleware('STUDENT'), async (req, r
             return res.status(404).json({ message: 'Student not found' });
         }
 
+
         const marks = await CIEMark.findAll({
             where: {
-                studentId: student.id,
-                status: 'APPROVED'
+                studentId: student.id
+                // Removed status filter - students should see all their marks (PENDING, SUBMITTED, APPROVED)
             },
             include: [{
                 model: Subject,
@@ -369,44 +370,46 @@ router.get('/faculty/analytics', authMiddleware, roleMiddleware('FACULTY'), asyn
             assignedSubject = allSubjects[(facIndex - 1) % allSubjects.length];
         }
 
-        const totalStudents = await Student.count(); // Assuming all 63 students take the subject
 
-        // Fetch marks for this subject
-        const marks = await CIEMark.findAll({
-            where: { subjectId: assignedSubject.id }
-        });
-
-        // Count unique students who have marks (not total mark records)
-        const uniqueStudentIds = [...new Set(marks.map(m => m.studentId))];
-        const evaluated = uniqueStudentIds.length;
-        const pending = Math.max(0, totalStudents - evaluated); // Ensure non-negative
-
-        // Calculate student-level statistics
-        const studentTotals = {};
-        marks.forEach(m => {
-            if (!studentTotals[m.studentId]) {
-                studentTotals[m.studentId] = 0;
+        // Fetch CIE-1 marks ONLY for this subject
+        const cie1Marks = await CIEMark.findAll({
+            where: {
+                subjectId: assignedSubject.id,
+                cieType: 'CIE1'
             }
-            studentTotals[m.studentId] += m.marks || 0;
         });
 
+        // Count students who have CIE-1 marks entered
+        const evaluated = cie1Marks.length;
+
+        // Total students for THIS subject = students with marks entered
+        // (Not all 63 students take every subject, so we count based on actual enrollment)
+        const totalStudents = evaluated;
+        const pending = 0; // If all enrolled students have marks, pending = 0
+
+        // Calculate statistics based on CIE-1 marks (out of 50)
         let totalScore = 0;
         let lowPerformers = 0;
         let topPerformers = 0;
 
-        Object.values(studentTotals).forEach(total => {
-            totalScore += total;
-            // Assuming max total marks is 250 (5 CIEs × 50 marks each)
-            if (total < 100) lowPerformers++; // < 40%
-            if (total >= 225) topPerformers++; // >= 90%
+        cie1Marks.forEach(mark => {
+            const score = mark.marks || 0;
+            totalScore += score;
+
+            // Low performers: < 25/50 (50%)
+            if (score < 25) lowPerformers++;
+
+            // Top performers: >= 40/50 (80%)
+            if (score >= 40) topPerformers++;
         });
 
-        const avgScore = evaluated > 0 ? Math.round(totalScore / evaluated) : 0;
+        // Calculate average as percentage
+        const avgScore = evaluated > 0 ? Math.round((totalScore / evaluated) * 2) : 0; // Convert to percentage (x/50 * 100 = x*2)
 
         res.json({
             evaluated,
             pending,
-            avgScore,
+            avgScore, // Now returns percentage (0-100)
             lowPerformers,
             topPerformers,
             subjectName: assignedSubject.name

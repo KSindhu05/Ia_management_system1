@@ -163,6 +163,45 @@ router.get('/faculty/notifications', authMiddleware, roleMiddleware('FACULTY'), 
     }
 });
 
+// Get All CIE Schedules for Faculty (Read-only, published by HOD)
+router.get('/faculty/schedules', authMiddleware, roleMiddleware('FACULTY'), async (req, res) => {
+    try {
+        // Faculty can view all scheduled CIE exams for their subjects
+        // In a full implementation, filter by faculty's assigned subjects
+        const announcements = await Announcement.findAll({
+            where: { status: 'SCHEDULED' },
+            include: [
+                { model: Subject, attributes: ['name', 'code', 'department'] },
+                { model: User, as: 'faculty', attributes: ['username', 'fullName'] }
+            ],
+            order: [['scheduledDate', 'ASC']]
+        });
+
+        // Format for frontend consumption
+        const formatted = announcements.map(ann => ({
+            id: ann.id,
+            cieNumber: ann.cieNumber,
+            scheduledDate: ann.scheduledDate,
+            startTime: ann.startTime,
+            durationMinutes: ann.durationMinutes,
+            examRoom: ann.examRoom,
+            instructions: ann.instructions,
+            status: ann.status,
+            subject: ann.Subject ? {
+                name: ann.Subject.name,
+                code: ann.Subject.code,
+                department: ann.Subject.department
+            } : null,
+            publishedBy: ann.faculty ? (ann.faculty.fullName || ann.faculty.username) : 'HOD'
+        }));
+
+        res.json(formatted);
+    } catch (error) {
+        console.error('Get faculty schedules error:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
 // Get All Faculty Announcements (list view)
 router.get('/faculty/announcements/list', authMiddleware, roleMiddleware('FACULTY'), async (req, res) => {
     try {
@@ -239,6 +278,49 @@ router.get('/hod/notifications', authMiddleware, roleMiddleware('HOD'), async (r
         res.json(notifications);
     } catch (error) {
         console.error('Get HOD notifications error:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+// Create/Update CIE Announcement (HOD only)
+router.post('/announcements', authMiddleware, roleMiddleware('HOD'), async (req, res) => {
+    try {
+        const { subjectId } = req.query;
+        const { cieNumber, scheduledDate, startTime, durationMinutes, examRoom, instructions, syllabusCoverage } = req.body;
+
+        if (!subjectId) {
+            return res.status(400).json({ message: 'Missing subjectId query parameter' });
+        }
+
+        // Upsert logic - create or update announcement
+        const [announcement, created] = await Announcement.findOrCreate({
+            where: { subjectId, cieNumber },
+            defaults: {
+                scheduledDate,
+                startTime,
+                durationMinutes: durationMinutes || 60,
+                examRoom,
+                instructions,
+                syllabusCoverage,
+                facultyId: req.user.id, // HOD creating the announcement
+                status: 'SCHEDULED'
+            }
+        });
+
+        if (!created) {
+            await announcement.update({
+                scheduledDate,
+                startTime,
+                durationMinutes: durationMinutes || 60,
+                examRoom,
+                instructions,
+                syllabusCoverage
+            });
+        }
+
+        res.json({ message: 'CIE Schedule published successfully', announcement });
+    } catch (error) {
+        console.error('HOD publish schedule error:', error);
         res.status(500).json({ message: 'Internal server error' });
     }
 });

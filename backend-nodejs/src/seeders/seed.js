@@ -56,10 +56,7 @@ async function seedDatabase() {
         // Create Subjects
         console.log('\nCreating Subjects...');
         const subjects = await Subject.bulkCreate([
-            { name: 'Data Structures', code: 'BCS301', department: 'CS', semester: '3', credits: 4 },
-            { name: 'Digital Electronics', code: 'BCS302', department: 'CS', semester: '3', credits: 3 },
-            { name: 'Computer Organization', code: 'BCS303', department: 'CS', semester: '3', credits: 4 },
-            { name: 'Discrete Mathematics', code: 'BCS304', department: 'CS', semester: '3', credits: 4 }
+            // Removed: Data Structures, Digital Electronics, Computer Organization, Discrete Mathematics
         ]);
         console.log(`✓ Created ${subjects.length} subjects`);
 

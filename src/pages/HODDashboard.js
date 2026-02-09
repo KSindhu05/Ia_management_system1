@@ -227,16 +227,8 @@ const HODDashboard = () => {
             setStudents(fetchedStudents);
 
             if (subjectsByDept[selectedDept]) {
-                const richSubjects = subjectsByDept[selectedDept].map((name, id) => {
-                    let cie1Max = 35, cie2Max = 15, totalMax = 50;
-                    if (name === 'English Communication') { cie1Max = 50; cie2Max = 0; totalMax = 50; }
-                    else if (name === 'CAEG') { cie1Max = 8; cie2Max = 22; totalMax = 30; }
-                    else if (name === 'Python') { cie1Max = 25; cie2Max = 25; totalMax = 50; }
-
-                    return { id: id + 1, name: name, department: selectedDept, cie1MaxMarks: cie1Max, cie2MaxMarks: cie2Max, totalMaxMarks: totalMax };
-                });
-                setSubjects(richSubjects);
-                setSelectedSubject(richSubjects[0]);
+                // Mock data removed in favor of real API fetch
+                // const richSubjects = subjectsByDept[selectedDept].map...
             }
         } else {
             setDeptStudents([]); setStudents([]); setSubjects([]); setSelectedSubject(null);
@@ -319,12 +311,12 @@ const HODDashboard = () => {
     };
 
     useEffect(() => {
-        if ((activeTab === 'cie-schedule' || activeTab === 'lesson-plans' || activeTab === 'monitoring') && isMyDept) {
+        if (isMyDept) {
             const fetchSubjects = async () => {
                 try {
                     const token = user?.token;
                     const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-                    const baseUrl = 'http://127.0.0.1:8083/api/subjects';
+                    // Removed unused localhost URL
                     const response = await fetch(`${API_BASE_URL}/subjects/department/${selectedDept}`, { headers });
                     if (response.ok) { setSubjects(await response.json()); }
                 } catch (e) { console.error("Failed to fetch subjects", e); }
@@ -426,7 +418,7 @@ const HODDashboard = () => {
             </aside>
             <main className={styles.mainContent}>
                 <header className={styles.topHeader}>
-                    <div className={styles.headerLeft}>{activeTab === 'overview' ? (<div><h1 className={styles.welcomeText}>Hello, MD Jaffar</h1><p className={styles.subtitle}>Head of Computer Science | HOD - ID: CS-H01</p></div>) : (<h1>{menuItems.find(m => m.active)?.label}</h1>)}</div>
+                    <div className={styles.headerLeft}>{activeTab === 'overview' ? (<div><h1 className={styles.welcomeTextBig}>Hello, MD Jaffar</h1><p className={styles.subtitle}>Head of Computer Science | HOD - ID: CS-H01</p></div>) : (<h1>{menuItems.find(m => m.active)?.label}</h1>)}</div>
                     <div className={styles.headerRight}>
                         <div className={styles.deptSelector}><span>Department:</span><select value={selectedDept} onChange={(e) => setSelectedDept(e.target.value)} className={styles.deptSelect}>{departments.map(d => (<option key={d.id} value={d.id}>{d.name}</option>))}</select></div>
                     </div>

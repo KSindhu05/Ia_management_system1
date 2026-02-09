@@ -1,19 +1,33 @@
 .header {
-    margin-bottom: 2rem;
-    /* Added separator as per user request */
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid #e5e7eb;
+    background: white;
+    padding: 0 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #e2e8f0;
+    height: 150px;
+    flex-shrink: 0;
 }
 
 .welcomeText {
     margin: 0;
-    font-size: 1.75rem;
-    color: #111827;
+    font-size: 2.5rem;
+    font-weight: 800;
+    letter-spacing: -0.1rem;
+    background: linear-gradient(to right, #2563eb, #9333ea, #db2777);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    display: inline-block;
 }
 
 .subtitle {
-    margin: 0.25rem 0 0 0;
-    color: #4b5563;
+    margin: 0.5rem 0 0 0;
+    color: #6b7280;
+    font-size: 1.1rem;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
 }
 
 /* Notification Bell Styles */
