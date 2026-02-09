@@ -1,0 +1,9 @@
+@echo off
+echo Starting IA Management System...
+
+echo Starting Backend...
+start "IA Management Backend" cmd /k "cd Ia_management_system\backend-nodejs && npm run dev"
+
+echo Starting Frontend...
+cd Ia_management_system
+npm start
