@@ -1,9 +1,10 @@
 @echo off
-echo Starting IA Management Backend...
-cd /d "%~dp0backend"
-
-REM Use mvnd (Maven Daemon) since that's what's installed
-echo Using Maven Daemon (mvnd)...
-call mvnd spring-boot:run
-
+echo Starting IA Management Backend (Node.js)...
+cd /d "%~dp0backend-nodejs"
+if not exist node_modules (
+    echo Installing backend dependencies...
+    call npm install
+)
+echo Starting Backend Server...
+npm run dev
 pause
